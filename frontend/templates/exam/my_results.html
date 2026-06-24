@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}My Results{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">
+        <i class="fas fa-history" aria-hidden="true"></i>
+        My Examination Results
+      </h1>
+      <p class="page-subtitle">Your complete examination history</p>
+    </div>
+  </div>
+
+  {% if results %}
+
+  <!-- Summary stats bar -->
+  <div class="results-summary-bar">
+    {% set total    = results|length %}
+    {% set passed   = results|selectattr('passed')|list|length %}
+    {% set failed   = total - passed %}
+    {% set avg_pct  = (results|sum(attribute='percentage') / total)|round(1) if total else 0 %}
+
+    <div class="summary-stat">
+      <span class="summary-value">{{ total }}</span>
+      <span class="summary-label">Total Exams</span>
+    </div>
+    <div class="summary-divider" aria-hidden="true"></div>
+    <div class="summary-stat">
+      <span class="summary-value" style="color:var(--color-success);">{{ passed }}</span>
+      <span class="summary-label">Passed</span>
+    </div>
+    <div class="summary-divider" aria-hidden="true"></div>
+    <div class="summary-stat">
+      <span class="summary-value" style="color:var(--color-danger);">{{ failed }}</span>
+      <span class="summary-label">Failed</span>
+    </div>
+    <div class="summary-divider" aria-hidden="true"></div>
+    <div class="summary-stat">
+      <span class="summary-value" style="color:var(--color-primary);">{{ avg_pct }}%</span>
+      <span class="summary-label">Avg Score</span>
+    </div>
+  </div>
+
+  <!-- Results table -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table" aria-label="Your complete examination history">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Exam</th>
+            <th scope="col">Subject</th>
+            <th scope="col">Score</th>
+            <th scope="col">Percentage</th>
+            <th scope="col">Time Taken</th>
+            <th scope="col">Status</th>
+            <th scope="col">Submitted</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for result in results %}
+          <tr>
+            <td style="color:var(--text-muted);font-size:var(--font-size-xs);">
+              {{ loop.index }}
+            </td>
+            <td>
+              <strong>{{ result.exam.title }}</strong>
+              {% if result.flagged_for_malpractice %}
+              <span class="badge badge-warning" title="Flagged for integrity review">
+                <i class="fas fa-flag"></i>
+              </span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="subject-tag">{{ result.exam.subject }}</span>
+            </td>
+            <td>
+              <span style="font-weight:700;">{{ result.score }}</span>
+              <span style="color:var(--text-muted);">/ {{ result.total_marks }}</span>
+            </td>
+            <td>
+              <div class="score-display">
+                <div class="score-bar-wrap">
+                  <div class="score-bar"
+                       style="width:{{ result.percentage }}%;
+                              background:{{ '#16a34a' if result.passed else '#dc2626' }};"
+                       role="progressbar"
+                       aria-valuenow="{{ result.percentage }}"
+                       aria-valuemin="0" aria-valuemax="100">
+                  </div>
+                </div>
+                <span class="score-pct"
+                      style="color:{{ 'var(--color-success)' if result.passed else 'var(--color-danger)' }};">
+                  {{ result.percentage }}%
+                </span>
+              </div>
+            </td>
+            <td style="white-space:nowrap;font-size:var(--font-size-xs);color:var(--text-muted);">
+              {% if result.time_taken_seconds %}
+                {{ result.time_taken_seconds // 60 }}m
+                {{ '%02d' % (result.time_taken_seconds % 60) }}s
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if result.passed %}
+              <span class="badge badge-success">PASSED</span>
+              {% else %}
+              <span class="badge badge-danger">FAILED</span>
+              {% endif %}
+              {% if result.status == 'auto_submitted' %}
+              <span class="badge badge-neutral" title="Auto-submitted by system">AUTO</span>
+              {% endif %}
+            </td>
+            <td style="white-space:nowrap;font-size:var(--font-size-xs);">
+              {% if result.submitted_at %}
+              <time datetime="{{ result.submitted_at.isoformat() }}">
+                {{ result.submitted_at.strftime('%d %b %Y') }}<br>
+                <span style="color:var(--text-muted);">
+                  {{ result.submitted_at.strftime('%H:%M') }} UTC
+                </span>
+              </time>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('exam.view_result', result_id=result.id) }}"
+                 class="btn btn-ghost btn-sm"
+                 aria-label="View result for {{ result.exam.title }}">
+                <i class="fas fa-eye" aria-hidden="true"></i> View
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+
+  <!-- Empty state -->
+  <div class="empty-state">
+    <div class="empty-icon" aria-hidden="true">📋</div>
+    <h2 class="empty-title">No results yet</h2>
+    <p class="empty-desc">
+      You haven't completed any exams yet.<br>
+      Head to the dashboard to start your first exam.
+    </p>
+    <a href="{{ url_for('exam.student_dashboard') }}" class="btn btn-primary"
+       style="margin-top:1.5rem;">
+      <i class="fas fa-home" aria-hidden="true"></i>
+      Go to Dashboard
+    </a>
+  </div>
+
+  {% endif %}
+
+</div><!-- /.page-container -->
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.results-summary-bar {
+  display: flex;
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem 2rem;
+  margin-bottom: 1.5rem;
+  gap: 0;
+}
+.summary-stat {
+  flex: 1;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.summary-value {
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.summary-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.summary-divider {
+  width: 1px;
+  height: 3rem;
+  background: var(--surface-border);
+  margin: 0 1rem;
+  flex-shrink: 0;
+}
+.subject-tag {
+  display: inline-block;
+  padding: 2px 0.5rem;
+  border-radius: 9999px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  .results-summary-bar { flex-wrap: wrap; gap: 1rem; }
+  .summary-divider { display: none; }
+  .summary-stat { flex: calc(50% - 0.5rem); }
+}
+</style>
+{% endblock %}

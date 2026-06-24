@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+<!--
+  exam/start.html — Pre-Exam Instructions Page
+  ==============================================
+  The student must read the rules and click 'Begin' to actually
+  start the exam. This POST triggers begin_exam() which creates
+  the server-side ExamSession.
+-->
+{% block title %}Start: {{ exam.title }}{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:720px;">
+
+  <div class="card" style="margin-top:2rem;">
+    <div class="card-header" style="background:linear-gradient(135deg,var(--color-primary),var(--color-secondary));border-radius:var(--radius-xl) var(--radius-xl) 0 0;border:none;">
+      <div>
+        <div style="font-size:var(--font-size-xs);color:rgba(255,255,255,0.7);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.25rem;">
+          {{ exam.subject }}
+        </div>
+        <h1 style="font-size:var(--font-size-2xl);font-weight:800;color:white;margin:0;">
+          {{ exam.title }}
+        </h1>
+      </div>
+      <div style="font-size:3rem;" aria-hidden="true">📋</div>
+    </div>
+
+    <div class="card-body">
+
+      {% if exam.description %}
+      <p style="color:var(--text-secondary);margin-bottom:1.5rem;line-height:1.7;">
+        {{ exam.description }}
+      </p>
+      {% endif %}
+
+      <!-- Exam details grid -->
+      <div class="exam-details-grid">
+        <div class="exam-detail-item">
+          <i class="fas fa-clock" aria-hidden="true" style="color:var(--color-primary);"></i>
+          <div>
+            <div class="detail-value">{{ exam.duration_minutes }} minutes</div>
+            <div class="detail-label">Duration</div>
+          </div>
+        </div>
+        <div class="exam-detail-item">
+          <i class="fas fa-question-circle" aria-hidden="true" style="color:var(--color-secondary);"></i>
+          <div>
+            <div class="detail-value">{{ exam.question_count() }} questions</div>
+            <div class="detail-label">Total Questions</div>
+          </div>
+        </div>
+        <div class="exam-detail-item">
+          <i class="fas fa-star" aria-hidden="true" style="color:var(--color-warning);"></i>
+          <div>
+            <div class="detail-value">{{ exam.total_marks() }} marks</div>
+            <div class="detail-label">Total Marks</div>
+          </div>
+        </div>
+        <div class="exam-detail-item">
+          <i class="fas fa-trophy" aria-hidden="true" style="color:var(--color-success);"></i>
+          <div>
+            <div class="detail-value">{{ exam.pass_mark }}%</div>
+            <div class="detail-label">Pass Mark</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rules -->
+      <div class="rules-section">
+        <h2 class="rules-title">
+          <i class="fas fa-shield-alt" aria-hidden="true"></i>
+          Examination Rules &amp; Anti-Cheat Policy
+        </h2>
+        <ul class="rules-list" role="list">
+          <li class="rule-item rule-critical">
+            <i class="fas fa-video" aria-hidden="true"></i>
+            <div>
+              <strong>Webcam Required:</strong> Your face must be visible throughout the exam.
+              Ensure good lighting and position your face clearly in front of the camera.
+            </div>
+          </li>
+          <li class="rule-item rule-critical">
+            <i class="fas fa-window-maximize" aria-hidden="true"></i>
+            <div>
+              <strong>Stay in this window:</strong> Switching tabs or applications is monitored.
+              You are allowed <strong>{{ exam.max_tab_switches }} warning{{ 's' if exam.max_tab_switches != 1 }}</strong>
+              before your exam is auto-submitted.
+            </div>
+          </li>
+          <li class="rule-item">
+            <i class="fas fa-ban" aria-hidden="true"></i>
+            <div>
+              <strong>No copy/paste:</strong> Copying or pasting text during the exam is
+              prohibited and will be logged.
+            </div>
+          </li>
+          <li class="rule-item">
+            <i class="fas fa-mouse-pointer" aria-hidden="true"></i>
+            <div>
+              <strong>No right-click:</strong> Right-clicking within the exam is disabled.
+            </div>
+          </li>
+          <li class="rule-item">
+            <i class="fas fa-keyboard" aria-hidden="true"></i>
+            <div>
+              <strong>No keyboard shortcuts:</strong> Common shortcuts (Ctrl+C, Ctrl+V,
+              F12, etc.) are disabled.
+            </div>
+          </li>
+          <li class="rule-item">
+            <i class="fas fa-user" aria-hidden="true"></i>
+            <div>
+              <strong>One person only:</strong> AI face detection monitors for multiple
+              faces. Only you should be visible in the webcam.
+            </div>
+          </li>
+          <li class="rule-item">
+            <i class="fas fa-clock" aria-hidden="true"></i>
+            <div>
+              <strong>Server-side timer:</strong> The countdown is tracked on our server.
+              Refreshing the page or losing internet will not grant extra time.
+              Your answers auto-save every 30 seconds.
+            </div>
+          </li>
+          {% if exam.shuffle_questions %}
+          <li class="rule-item">
+            <i class="fas fa-random" aria-hidden="true"></i>
+            <div>
+              <strong>Questions are shuffled:</strong> Question order is randomised for
+              every student to maintain integrity.
+            </div>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <!-- Accessibility options -->
+      <div class="accessibility-options">
+        <h2 class="rules-title">
+          <i class="fas fa-universal-access" aria-hidden="true"></i>
+          Accessibility Options
+        </h2>
+        <div class="acc-options-grid">
+          <label class="acc-option">
+            <input type="checkbox" id="enableTTS" />
+            <span><i class="fas fa-volume-up" aria-hidden="true"></i> Text-to-Speech</span>
+          </label>
+          <label class="acc-option">
+            <input type="checkbox" id="largeFont" />
+            <span><i class="fas fa-text-height" aria-hidden="true"></i> Large Text</span>
+          </label>
+          <label class="acc-option">
+            <input type="checkbox" id="highContrast" />
+            <span><i class="fas fa-adjust" aria-hidden="true"></i> High Contrast</span>
+          </label>
+          <label class="acc-option">
+            <input type="checkbox" id="keyboardOnly" />
+            <span><i class="fas fa-keyboard" aria-hidden="true"></i> Keyboard Navigation</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Resume warning if session exists -->
+      {% if existing_session and not existing_session.is_expired() %}
+      <div class="resume-alert">
+        <i class="fas fa-info-circle" aria-hidden="true"></i>
+        <div>
+          <strong>You have an in-progress session for this exam.</strong>
+          Clicking Begin below will resume your existing session with
+          <strong id="sessionTimeLeft"></strong> remaining.
+        </div>
+      </div>
+      <script>
+        (function(){
+          const deadline = new Date({{ existing_session.deadline.timestamp() * 1000 }});
+          const el = document.getElementById('sessionTimeLeft');
+          function tick(){
+            const s = Math.max(0, Math.floor((deadline - Date.now())/1000));
+            el.textContent = Math.floor(s/60) + 'm ' + String(s%60).padStart(2,'0') + 's';
+            if(s>0) setTimeout(tick, 1000);
+          }
+          tick();
+        })();
+      </script>
+      {% endif %}
+
+      <!-- Action Buttons -->
+      <div class="start-actions">
+        <a href="{{ url_for('exam.student_dashboard') }}" class="btn btn-ghost">
+          <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
+        </a>
+
+        <form method="POST" action="{{ url_for('exam.begin_exam', exam_id=exam.id) }}" id="beginForm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <!-- Accessibility preferences passed along -->
+          <input type="hidden" name="tts_enabled" id="ttsHidden" value="false" />
+          <input type="hidden" name="large_font"  id="lfHidden"  value="false" />
+
+          <button type="submit" class="btn btn-primary btn-lg" id="beginBtn"
+                  aria-label="Begin {{ exam.title }} examination">
+            <i class="fas fa-play" aria-hidden="true"></i>
+            Begin Exam
+          </button>
+        </form>
+      </div>
+
+    </div><!-- /.card-body -->
+  </div><!-- /.card -->
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.exam-details-grid {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 1rem; margin-bottom: 2rem;
+}
+.exam-detail-item {
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--surface-hover);
+  border-radius: var(--radius-lg); padding: 1rem;
+}
+.exam-detail-item i { font-size: 1.5rem; flex-shrink: 0; }
+.detail-value { font-weight: 700; font-size: var(--font-size-base); color: var(--text-primary); }
+.detail-label { font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px; }
+
+.rules-section, .accessibility-options { margin-bottom: 2rem; }
+.rules-title {
+  font-size: var(--font-size-base); font-weight: 700; color: var(--text-primary);
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 1rem; padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--surface-border);
+}
+.rules-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.rule-item {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface-hover);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  border-left: 3px solid var(--surface-border);
+}
+.rule-item i { margin-top: 2px; color: var(--text-muted); flex-shrink: 0; }
+.rule-critical { border-left-color: var(--color-danger); background: var(--color-danger-light); }
+.rule-critical i { color: var(--color-danger); }
+
+.acc-options-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.75rem; }
+.acc-option {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer; font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
+}
+.acc-option:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
+.acc-option input { accent-color: var(--color-primary); }
+
+.resume-alert {
+  display: flex; gap: 0.75rem; align-items: flex-start;
+  background: var(--color-info-light); border: 1px solid var(--color-info);
+  border-radius: var(--radius-lg); padding: 1rem;
+  font-size: var(--font-size-sm); color: #0c4a6e;
+  margin-bottom: 1.5rem;
+}
+
+.start-actions {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 1.5rem; border-top: 1px solid var(--surface-border);
+}
+
+@media (max-width: 600px) {
+  .exam-details-grid { grid-template-columns: repeat(2,1fr); }
+  .acc-options-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Wire up accessibility checkboxes to hidden inputs + localStorage
+const ttsCheck = document.getElementById('enableTTS');
+const lfCheck  = document.getElementById('largeFont');
+const hcCheck  = document.getElementById('highContrast');
+const ttsHid   = document.getElementById('ttsHidden');
+const lfHid    = document.getElementById('lfHidden');
+
+// Restore saved prefs
+ttsCheck.checked = localStorage.getItem('edu-tts') === 'true';
+lfCheck.checked  = localStorage.getItem('edu-largefont') === 'true';
+hcCheck.checked  = localStorage.getItem('edu-highcontrast') === 'true';
+
+ttsCheck.addEventListener('change', () => {
+  localStorage.setItem('edu-tts', ttsCheck.checked);
+  ttsHid.value = ttsCheck.checked;
+  if(ttsCheck.checked && window.speechSynthesis) {
+    const u = new SpeechSynthesisUtterance('Text to speech enabled.');
+    window.speechSynthesis.speak(u);
+  }
+});
+lfCheck.addEventListener('change', () => {
+  localStorage.setItem('edu-largefont', lfCheck.checked);
+  lfHid.value = lfCheck.checked;
+  document.documentElement.style.fontSize = lfCheck.checked ? '20px' : '';
+});
+hcCheck.addEventListener('change', () => {
+  localStorage.setItem('edu-highcontrast', hcCheck.checked);
+  document.documentElement.setAttribute('data-theme', hcCheck.checked ? 'dark' : 'light');
+});
+
+// Apply on load
+if(lfCheck.checked) document.documentElement.style.fontSize = '20px';
+</script>
+{% endblock %}

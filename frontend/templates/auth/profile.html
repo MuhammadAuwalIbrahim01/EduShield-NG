@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <h1 class="page-title">
+      <i class="fas fa-user-circle" aria-hidden="true"></i>
+      My Profile
+    </h1>
+    <p class="page-subtitle">Manage your account information and security settings</p>
+  </div>
+
+  <div class="profile-grid">
+    <!-- LEFT: Summary card -->
+    <aside class="profile-sidebar">
+      <div class="card profile-summary-card">
+        <div class="card-body" style="text-align:center; padding:var(--space-8);">
+          <div class="profile-avatar-large" aria-hidden="true">
+            {{ current_user.full_name[0].upper() }}
+          </div>
+          <h2 class="profile-name">{{ current_user.full_name }}</h2>
+          <p class="profile-email">{{ current_user.email }}</p>
+          <span class="role-badge role-{{ current_user.role }}" style="margin-top:var(--space-3);display:inline-block;">
+            {{ current_user.role.title() }}
+          </span>
+          {% if current_user.student_id %}
+          <p class="profile-meta"><i class="fas fa-id-card"></i> {{ current_user.student_id }}</p>
+          {% endif %}
+          {% if current_user.institution %}
+          <p class="profile-meta"><i class="fas fa-university"></i> {{ current_user.institution }}</p>
+          {% endif %}
+          <div class="profile-stats">
+            <div class="profile-stat">
+              <span class="stat-value" id="examCount">—</span>
+              <span class="stat-label">Exams Taken</span>
+            </div>
+            <div class="profile-stat">
+              <span class="stat-value" id="avgScore">—</span>
+              <span class="stat-label">Avg. Score</span>
+            </div>
+          </div>
+          {% if current_user.last_login %}
+          <p class="profile-last-login">
+            Last login: {{ current_user.last_login.strftime('%d %b %Y, %H:%M') }} UTC
+          </p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:var(--space-4);">
+        <div class="card-header"><span class="card-title">Account Status</span></div>
+        <div class="card-body">
+          <div class="status-row">
+            <span>Verified</span>
+            <span class="status-badge {% if current_user.is_verified %}status-ok{% else %}status-warn{% endif %}">
+              {% if current_user.is_verified %}✅ Yes{% else %}⚠️ Pending{% endif %}
+            </span>
+          </div>
+          <div class="status-row">
+            <span>Active</span>
+            <span class="status-badge {% if current_user.is_active %}status-ok{% else %}status-danger{% endif %}">
+              {% if current_user.is_active %}✅ Yes{% else %}❌ Suspended{% endif %}
+            </span>
+          </div>
+          <div class="status-row">
+            <span>Language</span>
+            <span>
+              {% if current_user.preferred_language == 'en' %}🇬🇧 English
+              {% elif current_user.preferred_language == 'ha' %}Hausa
+              {% elif current_user.preferred_language == 'yo' %}Yoruba
+              {% elif current_user.preferred_language == 'ig' %}Igbo
+              {% endif %}
+            </span>
+          </div>
+          {% if current_user.is_student() %}
+          <div class="status-row">
+            <span>
+              <i class="fas fa-camera" aria-hidden="true"></i>
+              Face Calibration
+            </span>
+            <span class="status-badge {% if current_user.has_face_calibration() %}status-ok{% else %}status-danger{% endif %}">
+              {% if current_user.has_face_calibration() %}
+                ✅ Calibrated
+              {% else %}
+                ⚠️ Not Set Up
+              {% endif %}
+            </span>
+          </div>
+          {% if current_user.has_face_calibration() %}
+          <div style="margin-top:var(--space-2);">
+            <form method="POST" action="{{ url_for('exam.recalibrate_face') }}"
+                  onsubmit="return confirm('This will clear your face calibration. You will need to recalibrate before your next webcam exam. Continue?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="btn btn-ghost btn-sm" style="width:100%;">
+                <i class="fas fa-redo" aria-hidden="true"></i> Reset Calibration
+              </button>
+            </form>
+          </div>
+          {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT: Edit forms -->
+    <div class="profile-main">
+      <!-- Update Profile -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="fas fa-edit"></i> Edit Profile</span>
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('auth.profile') }}" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="full_name" class="form-label">Full Name <span class="required-star">*</span></label>
+                {{ form.full_name(id="full_name", class="form-control" + (" form-control-error" if form.full_name.errors else "")) }}
+                {% if form.full_name.errors %}<div class="field-error" role="alert">{{ form.full_name.errors[0] }}</div>{% endif %}
+              </div>
+              <div class="form-group">
+                <label for="phone" class="form-label">Phone <span class="optional-label">(optional)</span></label>
+                {{ form.phone(id="phone", class="form-control", type="tel") }}
+                {% if form.phone.errors %}<div class="field-error" role="alert">{{ form.phone.errors[0] }}</div>{% endif %}
+              </div>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="institution" class="form-label">Institution</label>
+                {{ form.institution(id="institution", class="form-control") }}
+              </div>
+              <div class="form-group">
+                <label for="department" class="form-label">Department</label>
+                {{ form.department(id="department", class="form-control") }}
+              </div>
+            </div>
+            <div class="form-group" style="max-width:240px;">
+              <label for="preferred_language" class="form-label">Preferred Language</label>
+              {{ form.preferred_language(id="preferred_language", class="form-control form-select") }}
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i> Save Changes
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Change Password -->
+      <div class="card" style="margin-top:var(--space-6);">
+        <div class="card-header">
+          <span class="card-title"><i class="fas fa-lock"></i> Change Password</span>
+        </div>
+        <div class="card-body">
+          <p style="color:var(--text-secondary);font-size:var(--font-size-sm);margin-bottom:var(--space-5);">
+            After changing your password, you will be signed out and need to log in again.
+          </p>
+          <form method="POST" action="{{ url_for('auth.change_password') }}" novalidate style="max-width:440px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="form-group">
+              <label for="current_password" class="form-label">Current Password <span class="required-star">*</span></label>
+              <div class="input-with-toggle">
+                <input type="password" id="current_password" name="current_password" class="form-control" required placeholder="Current password" autocomplete="current-password" />
+                <button type="button" class="input-toggle-btn" onclick="togglePw('current_password',this)" aria-label="Show password"><i class="fas fa-eye"></i></button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="new_password" class="form-label">New Password <span class="required-star">*</span></label>
+              <div class="input-with-toggle">
+                <input type="password" id="new_password" name="new_password" class="form-control" required placeholder="Min 8 characters" autocomplete="new-password" />
+                <button type="button" class="input-toggle-btn" onclick="togglePw('new_password',this)" aria-label="Show password"><i class="fas fa-eye"></i></button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="confirm_new_password" class="form-label">Confirm New Password <span class="required-star">*</span></label>
+              <div class="input-with-toggle">
+                <input type="password" id="confirm_new_password" name="confirm_new_password" class="form-control" required placeholder="Re-enter new password" autocomplete="new-password" />
+                <button type="button" class="input-toggle-btn" onclick="togglePw('confirm_new_password',this)" aria-label="Show password"><i class="fas fa-eye"></i></button>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-danger">
+              <i class="fas fa-key"></i> Change Password
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-container { max-width:1100px; margin:0 auto; padding:var(--space-8) var(--space-6); }
+.page-header { margin-bottom:var(--space-8); }
+.page-title { font-size:var(--font-size-3xl); font-weight:800; color:var(--text-primary); display:flex; align-items:center; gap:var(--space-3); }
+.page-subtitle { color:var(--text-secondary); margin-top:var(--space-2); }
+.profile-grid { display:grid; grid-template-columns:300px 1fr; gap:var(--space-6); align-items:start; }
+.profile-avatar-large { width:5rem; height:5rem; border-radius:var(--radius-full); background:linear-gradient(135deg,var(--color-primary),var(--color-secondary)); color:white; font-size:var(--font-size-3xl); font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto var(--space-4); }
+.profile-name { font-size:var(--font-size-xl); font-weight:700; color:var(--text-primary); margin-bottom:var(--space-1); }
+.profile-email { font-size:var(--font-size-sm); color:var(--text-muted); }
+.profile-meta { font-size:var(--font-size-sm); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; gap:var(--space-2); margin-top:var(--space-2); }
+.profile-stats { display:flex; gap:var(--space-4); justify-content:center; margin-top:var(--space-6); padding-top:var(--space-6); border-top:1px solid var(--surface-border); }
+.profile-stat { display:flex; flex-direction:column; align-items:center; gap:var(--space-1); }
+.stat-value { font-size:var(--font-size-2xl); font-weight:800; color:var(--color-primary); }
+.stat-label { font-size:var(--font-size-xs); color:var(--text-muted); }
+.profile-last-login { font-size:var(--font-size-xs); color:var(--text-muted); margin-top:var(--space-4); }
+.status-row { display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) 0; border-bottom:1px solid var(--surface-border); font-size:var(--font-size-sm); }
+.status-row:last-child { border-bottom:none; }
+.status-ok { color:var(--color-success); font-weight:600; }
+.status-warn { color:var(--color-warning); font-weight:600; }
+.status-danger { color:var(--color-danger); font-weight:600; }
+.form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); }
+@media(max-width:900px){ .profile-grid,.form-grid-2{ grid-template-columns:1fr; } }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePw(id, btn) {
+  const inp = document.getElementById(id);
+  const ico = btn.querySelector('i');
+  const show = inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  ico.className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
+}
+fetch('/api/student/stats').then(r=>r.json()).then(d=>{
+  const e=document.getElementById('examCount');
+  const a=document.getElementById('avgScore');
+  if(e) e.textContent=d.total_exams??'0';
+  if(a) a.textContent=d.avg_score?d.avg_score+'%':'—';
+}).catch(()=>{});
+</script>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title"><i class="fas fa-chart-line" aria-hidden="true"></i> Admin Dashboard</h1>
+      <p class="page-subtitle">Overview of all examination activity</p>
+    </div>
+    <div class="page-header-right">
+      <a href="{{ url_for('admin.new_exam') }}" class="btn btn-primary">
+        <i class="fas fa-plus" aria-hidden="true"></i> New Exam
+      </a>
+    </div>
+  </div>
+
+  <!-- Top Stats -->
+  <div class="admin-stats-grid">
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon" style="background:var(--color-primary-light);color:var(--color-primary);">
+        <i class="fas fa-users" aria-hidden="true"></i>
+      </div>
+      <div class="admin-stat-value">{{ stats.total_students }}</div>
+      <div class="admin-stat-label">Total Students</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon" style="background:var(--color-secondary-light);color:var(--color-secondary);">
+        <i class="fas fa-file-alt" aria-hidden="true"></i>
+      </div>
+      <div class="admin-stat-value">{{ stats.total_exams }}</div>
+      <div class="admin-stat-label">Total Exams</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon" style="background:var(--color-success-light);color:var(--color-success);">
+        <i class="fas fa-check-circle" aria-hidden="true"></i>
+      </div>
+      <div class="admin-stat-value">{{ stats.published_exams }}</div>
+      <div class="admin-stat-label">Published</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon" style="background:var(--color-warning-light);color:var(--color-warning);">
+        <i class="fas fa-clipboard-check" aria-hidden="true"></i>
+      </div>
+      <div class="admin-stat-value">{{ stats.total_attempts }}</div>
+      <div class="admin-stat-label">Total Attempts</div>
+    </div>
+    <div class="admin-stat-card">
+      <div class="admin-stat-icon" style="background:var(--color-info-light);color:var(--color-info);">
+        <i class="fas fa-percentage" aria-hidden="true"></i>
+      </div>
+      <div class="admin-stat-value">{{ stats.overall_pass_rate }}%</div>
+      <div class="admin-stat-label">Overall Pass Rate</div>
+    </div>
+    <div class="admin-stat-card {% if stats.flagged_count > 0 %}admin-stat-alert{% endif %}">
+      <div class="admin-stat-icon" style="background:var(--color-danger-light);color:var(--color-danger);">
+        <i class="fas fa-flag" aria-hidden="true"></i>
+      </div>
+      <div class="admin-stat-value">{{ stats.flagged_count }}</div>
+      <div class="admin-stat-label">Flagged Results</div>
+    </div>
+  </div>
+
+  <div class="admin-dashboard-grid">
+
+    <!-- Exam Performance Table -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fas fa-table" aria-hidden="true"></i> Exam Performance</h2>
+        <a href="{{ url_for('admin.exams') }}" class="btn btn-ghost btn-sm">View All</a>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr><th>Exam</th><th>Attempts</th><th>Avg Score</th><th>Pass Rate</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for stat in exam_stats %}
+            <tr>
+              <td>
+                <strong>{{ stat.exam.title }}</strong>
+                <div style="font-size:var(--font-size-xs);color:var(--text-muted);">{{ stat.exam.subject }}</div>
+              </td>
+              <td>{{ stat.attempts }}</td>
+              <td>{{ stat.avg_pct }}%</td>
+              <td>
+                <span class="badge {% if stat.pass_rate >= 50 %}badge-success{% else %}badge-danger{% endif %}">
+                  {{ stat.pass_rate }}%
+                </span>
+              </td>
+              <td>
+                <a href="{{ url_for('admin.exam_results', exam_id=stat.exam.id) }}" class="btn btn-ghost btn-sm">
+                  <i class="fas fa-eye" aria-hidden="true"></i>
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">No exams yet</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sidebar: Flagged Results + High Severity Events -->
+    <div class="admin-sidebar-col">
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="card-header">
+          <h2 class="card-title" style="font-size:var(--font-size-base);">
+            <i class="fas fa-flag" style="color:var(--color-danger);" aria-hidden="true"></i> Flagged Results
+          </h2>
+        </div>
+        <div class="card-body" style="padding:0.75rem;">
+          {% for r in recent_flagged %}
+          <a href="{{ url_for('exam.view_result', result_id=r.id) }}" class="flagged-item">
+            <strong>{{ r.student.full_name }}</strong>
+            <span style="font-size:var(--font-size-xs);color:var(--text-muted);">{{ r.exam.title }}</span>
+          </a>
+          {% else %}
+          <p style="color:var(--text-muted);font-size:var(--font-size-sm);padding:0.5rem;">No flagged results ✅</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title" style="font-size:var(--font-size-base);">
+            <i class="fas fa-exclamation-triangle" style="color:var(--color-warning);" aria-hidden="true"></i> High Severity Events
+          </h2>
+        </div>
+        <div class="card-body" style="padding:0.75rem;">
+          {% for log in recent_high_severity %}
+          <div class="flagged-item">
+            <strong>{{ log.event_type.replace('_',' ').title() }}</strong>
+            <span style="font-size:var(--font-size-xs);color:var(--text-muted);">
+              {{ log.student.full_name }} — {{ log.timestamp.strftime('%d %b, %H:%M') }}
+            </span>
+          </div>
+          {% else %}
+          <p style="color:var(--text-muted);font-size:var(--font-size-sm);padding:0.5rem;">No high-severity events ✅</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-stats-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:1rem; margin-bottom:2rem; }
+.admin-stat-card { background:var(--surface-card); border:1px solid var(--surface-border); border-radius:var(--radius-xl); padding:1.25rem; text-align:center; }
+.admin-stat-alert { border-color:var(--color-danger); }
+.admin-stat-icon { width:2.5rem; height:2.5rem; border-radius:var(--radius-lg); display:flex; align-items:center; justify-content:center; margin:0 auto 0.5rem; font-size:1.1rem; }
+.admin-stat-value { font-size:var(--font-size-2xl); font-weight:800; color:var(--text-primary); }
+.admin-stat-label { font-size:var(--font-size-xs); color:var(--text-muted); margin-top:0.25rem; }
+.admin-dashboard-grid { display:grid; grid-template-columns:2fr 1fr; gap:1.5rem; }
+.admin-sidebar-col {}
+.flagged-item { display:flex; flex-direction:column; padding:0.6rem 0.75rem; border-radius:var(--radius-md); text-decoration:none; color:var(--text-primary); }
+.flagged-item:hover { background:var(--surface-hover); text-decoration:none; }
+@media (max-width:1100px) { .admin-stats-grid { grid-template-columns:repeat(3,1fr); } .admin-dashboard-grid { grid-template-columns:1fr; } }
+@media (max-width:600px) { .admin-stats-grid { grid-template-columns:repeat(2,1fr); } }
+</style>
+{% endblock %}

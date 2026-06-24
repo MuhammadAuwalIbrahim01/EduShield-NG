@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Available Exams{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">
+        <i class="fas fa-clipboard-list" aria-hidden="true"></i>
+        Available Examinations
+      </h1>
+      <p class="page-subtitle">
+        {{ exams|length }} exam{{ 's' if exams|length != 1 }} currently available
+      </p>
+    </div>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <form method="GET" action="{{ url_for('exam.available_exams') }}"
+        class="filter-bar" aria-label="Search and filter exams" role="search">
+    <div class="filter-search">
+      <i class="fas fa-search filter-search-icon" aria-hidden="true"></i>
+      <input type="search"
+             name="q"
+             value="{{ search_query }}"
+             class="form-control filter-search-input"
+             placeholder="Search exams by title or subject..."
+             aria-label="Search exams" />
+    </div>
+
+    <select name="subject" class="form-control form-select filter-select"
+            aria-label="Filter by subject" onchange="this.form.submit()">
+      <option value="">All Subjects</option>
+      {% for subject in subjects %}
+      <option value="{{ subject }}"
+              {% if subject == subject_filter %}selected{% endif %}>
+        {{ subject }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <button type="submit" class="btn btn-primary">
+      <i class="fas fa-filter" aria-hidden="true"></i> Filter
+    </button>
+    {% if search_query or subject_filter %}
+    <a href="{{ url_for('exam.available_exams') }}" class="btn btn-ghost">
+      <i class="fas fa-times" aria-hidden="true"></i> Clear
+    </a>
+    {% endif %}
+  </form>
+
+  <!-- Exams Grid -->
+  {% if exams %}
+  <div class="exam-grid" role="list" aria-label="Available examinations">
+    {% for exam in exams %}
+    <article class="exam-card" role="listitem"
+             aria-labelledby="ex-title-{{ exam.id }}">
+
+      <div class="exam-card-header">
+        <span class="subject-badge">{{ exam.subject }}</span>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          {% if exam.webcam_required %}
+          <span class="webcam-badge"
+                title="Webcam monitoring required"
+                aria-label="Webcam required">
+            <i class="fas fa-video" aria-hidden="true"></i>
+          </span>
+          {% endif %}
+          {% if exam.id in completed_ids %}
+          <span class="completed-badge">
+            <i class="fas fa-check" aria-hidden="true"></i> Done
+          </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <h3 class="exam-card-title" id="ex-title-{{ exam.id }}">
+        {{ exam.title }}
+      </h3>
+
+      {% if exam.description %}
+      <p class="exam-card-desc">
+        {{ exam.description[:120] }}{% if exam.description|length > 120 %}...{% endif %}
+      </p>
+      {% endif %}
+
+      <div class="exam-card-meta">
+        <span class="meta-item" title="Duration">
+          <i class="fas fa-clock" aria-hidden="true"></i>
+          {{ exam.duration_minutes }} min
+        </span>
+        <span class="meta-item" title="Number of questions">
+          <i class="fas fa-question-circle" aria-hidden="true"></i>
+          {{ exam.question_count() }} Qs
+        </span>
+        <span class="meta-item" title="Total marks">
+          <i class="fas fa-star" aria-hidden="true"></i>
+          {{ exam.total_marks() }} marks
+        </span>
+        <span class="meta-item" title="Pass mark">
+          <i class="fas fa-trophy" aria-hidden="true"></i>
+          Pass: {{ exam.pass_mark }}%
+        </span>
+      </div>
+
+      {% if exam.end_time %}
+      <div class="exam-deadline">
+        <i class="fas fa-hourglass-end" aria-hidden="true"></i>
+        Closes: {{ exam.end_time.strftime('%d %b %Y, %H:%M') }} UTC
+      </div>
+      {% endif %}
+
+      <div class="exam-card-footer">
+        {% if exam.id in completed_ids %}
+        <span class="btn btn-ghost btn-sm" style="cursor:default;">
+          <i class="fas fa-check-circle" aria-hidden="true"
+             style="color:var(--color-success);"></i>
+          Completed
+        </span>
+        {% else %}
+        <a href="{{ url_for('exam.start_exam', exam_id=exam.id) }}"
+           class="btn btn-primary btn-sm"
+           aria-label="Start {{ exam.title }}">
+          <i class="fas fa-play" aria-hidden="true"></i>
+          Start Exam
+        </a>
+        {% endif %}
+      </div>
+
+    </article>
+    {% endfor %}
+  </div>
+
+  {% else %}
+
+  <div class="empty-state">
+    <div class="empty-icon" aria-hidden="true">🔍</div>
+    <h2 class="empty-title">No exams found</h2>
+    <p class="empty-desc">
+      {% if search_query or subject_filter %}
+        No exams match your search. Try different keywords.
+      {% else %}
+        There are no exams available right now. Check back later.
+      {% endif %}
+    </p>
+    {% if search_query or subject_filter %}
+    <a href="{{ url_for('exam.available_exams') }}" class="btn btn-primary"
+       style="margin-top:1rem;">
+      Clear Filters
+    </a>
+    {% endif %}
+  </div>
+
+  {% endif %}
+
+</div><!-- /.page-container -->
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.filter-bar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.filter-search {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+.filter-search-icon {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.filter-search-input { padding-left: 2.5rem; }
+.filter-select { width: auto; min-width: 160px; }
+
+.completed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 2px 0.5rem;
+  border-radius: 9999px;
+  background: var(--color-success-light);
+  color: var(--color-success);
+  font-size: 11px;
+  font-weight: 600;
+}
+.exam-deadline {
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 500;
+}
+</style>
+{% endblock %}

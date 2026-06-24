@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Manage Exams{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title"><i class="fas fa-file-alt" aria-hidden="true"></i> Manage Exams</h1>
+      <p class="page-subtitle">{{ exams|length }} exam{{ 's' if exams|length != 1 }} total</p>
+    </div>
+    <div class="page-header-right">
+      <a href="{{ url_for('admin.new_exam') }}" class="btn btn-primary">
+        <i class="fas fa-plus" aria-hidden="true"></i> New Exam
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr><th>Title</th><th>Subject</th><th>Questions</th><th>Duration</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for exam in exams %}
+          <tr>
+            <td><strong>{{ exam.title }}</strong></td>
+            <td>{{ exam.subject }}</td>
+            <td>{{ exam.question_count() }}</td>
+            <td>{{ exam.duration_minutes }} min</td>
+            <td>
+              <span class="badge badge-{{ 'success' if exam.status == 'published' else ('neutral' if exam.status == 'draft' else 'warning') }}">
+                {{ exam.status.upper() }}
+              </span>
+            </td>
+            <td style="display:flex;gap:0.4rem;">
+              <a href="{{ url_for('admin.edit_exam', exam_id=exam.id) }}" class="btn btn-ghost btn-sm" title="Edit / Add Questions">
+                <i class="fas fa-edit" aria-hidden="true"></i>
+              </a>
+              <a href="{{ url_for('admin.exam_results', exam_id=exam.id) }}" class="btn btn-ghost btn-sm" title="View Results">
+                <i class="fas fa-chart-bar" aria-hidden="true"></i>
+              </a>
+              {% if exam.status == 'draft' %}
+              <form method="POST" action="{{ url_for('admin.publish_exam', exam_id=exam.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit" class="btn btn-ghost btn-sm" title="Publish"
+                        onclick="return confirm('Publish this exam? Students will be able to take it immediately.');">
+                  <i class="fas fa-upload" aria-hidden="true" style="color:var(--color-success);"></i>
+                </button>
+              </form>
+              {% elif exam.status == 'published' %}
+              <form method="POST" action="{{ url_for('admin.close_exam', exam_id=exam.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit" class="btn btn-ghost btn-sm" title="Close"
+                        onclick="return confirm('Close this exam? No new attempts will be allowed.');">
+                  <i class="fas fa-lock" aria-hidden="true" style="color:var(--color-warning);"></i>
+                </button>
+              </form>
+              {% endif %}
+              <form method="POST" action="{{ url_for('admin.delete_exam', exam_id=exam.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit" class="btn btn-ghost btn-sm" title="Delete"
+                        onclick="return confirm('Permanently delete this exam and ALL its results? This cannot be undone.');">
+                  <i class="fas fa-trash" aria-hidden="true" style="color:var(--color-danger);"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" style="text-align:center;padding:3rem;color:var(--text-muted);">
+            No exams yet. <a href="{{ url_for('admin.new_exam') }}">Create your first exam</a>.
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

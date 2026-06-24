@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+<!--
+  exam/dashboard.html — Student Home Page
+  =========================================
+  Shows:
+    1. Welcome banner with student name
+    2. Quick stats (exams taken, pass rate, available)
+    3. Active session alert (if student has an in-progress exam)
+    4. Available exams grid
+    5. Recent results table
+-->
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <!-- ── Welcome Banner ─────────────────────────── -->
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <h1 class="welcome-title">
+        Welcome back, {{ current_user.full_name.split()[0] }}! 👋
+      </h1>
+      <p class="welcome-subtitle">
+        Ready for your next examination?
+        {% if stats.available > 0 %}
+          You have <strong>{{ stats.available }}</strong> exam{{ 's' if stats.available != 1 }} available.
+        {% else %}
+          No exams are currently available.
+        {% endif %}
+      </p>
+    </div>
+    <div class="welcome-avatar" aria-hidden="true">
+      {{ current_user.full_name[0].upper() }}
+    </div>
+  </div>
+
+  <!-- ── Active Session Alert ───────────────────── -->
+  {% if active_session and not active_session.is_expired() %}
+  <div class="alert alert-warning" role="alert">
+    <div class="alert-icon"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></div>
+    <div class="alert-body">
+      <strong>You have an exam in progress!</strong>
+      <p>Your session expires in <strong id="resumeCountdown"></strong>. Resume immediately to avoid auto-submission.</p>
+    </div>
+    <a href="{{ url_for('exam.take_exam', session_token=active_session.session_token) }}"
+       class="btn btn-warning btn-sm">
+      <i class="fas fa-play" aria-hidden="true"></i> Resume Exam
+    </a>
+  </div>
+  <script>
+    // Countdown for resume alert
+    (function(){
+      const deadline = new Date({{ active_session.deadline.timestamp() * 1000 }});
+      const el = document.getElementById('resumeCountdown');
+      function update(){
+        const s = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+        const m = Math.floor(s/60), sec = s%60;
+        el.textContent = m + 'm ' + String(sec).padStart(2,'0') + 's';
+        if(s > 0) setTimeout(update, 1000);
+        else el.textContent = 'EXPIRED';
+      }
+      update();
+    })();
+  </script>
+  {% endif %}
+
+  <!-- ── Stats Row ──────────────────────────────── -->
+  <div class="stats-grid" role="region" aria-label="Your examination statistics">
+
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-blue" aria-hidden="true">
+        <i class="fas fa-clipboard-check"></i>
+      </div>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats.total_taken }}</div>
+        <div class="stat-label">Exams Taken</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-green" aria-hidden="true">
+        <i class="fas fa-trophy"></i>
+      </div>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats.passed }}</div>
+        <div class="stat-label">Passed</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-purple" aria-hidden="true">
+        <i class="fas fa-chart-pie"></i>
+      </div>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats.pass_rate }}%</div>
+        <div class="stat-label">Pass Rate</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-amber" aria-hidden="true">
+        <i class="fas fa-file-alt"></i>
+      </div>
+      <div class="stat-body">
+        <div class="stat-value">{{ stats.available }}</div>
+        <div class="stat-label">Available Now</div>
+      </div>
+    </div>
+
+  </div><!-- /.stats-grid -->
+
+  <!-- ── Available Exams ────────────────────────── -->
+  <section aria-labelledby="available-heading">
+    <div class="section-header">
+      <h2 class="section-title" id="available-heading">
+        <i class="fas fa-file-alt" aria-hidden="true"></i>
+        Available Exams
+      </h2>
+      <a href="{{ url_for('exam.available_exams') }}" class="btn btn-ghost btn-sm">
+        View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
+      </a>
+    </div>
+
+    {% if available_exams %}
+    <div class="exam-grid">
+      {% for exam in available_exams[:6] %}
+      <article class="exam-card" aria-labelledby="exam-title-{{ exam.id }}">
+        <div class="exam-card-header">
+          <span class="subject-badge">{{ exam.subject }}</span>
+          {% if exam.webcam_required %}
+          <span class="webcam-badge" title="Webcam required">
+            <i class="fas fa-video" aria-hidden="true"></i>
+          </span>
+          {% endif %}
+        </div>
+
+        <h3 class="exam-card-title" id="exam-title-{{ exam.id }}">
+          {{ exam.title }}
+        </h3>
+
+        {% if exam.description %}
+        <p class="exam-card-desc">{{ exam.description[:100] }}{% if exam.description|length > 100 %}...{% endif %}</p>
+        {% endif %}
+
+        <div class="exam-card-meta">
+          <span class="meta-item">
+            <i class="fas fa-clock" aria-hidden="true"></i>
+            {{ exam.duration_minutes }} min
+          </span>
+          <span class="meta-item">
+            <i class="fas fa-question-circle" aria-hidden="true"></i>
+            {{ exam.question_count() }} questions
+          </span>
+          <span class="meta-item">
+            <i class="fas fa-check-circle" aria-hidden="true"></i>
+            Pass: {{ exam.pass_mark }}%
+          </span>
+        </div>
+
+        <div class="exam-card-footer">
+          <a href="{{ url_for('exam.start_exam', exam_id=exam.id) }}"
+             class="btn btn-primary btn-sm"
+             aria-label="Start {{ exam.title }} examination">
+            <i class="fas fa-play" aria-hidden="true"></i>
+            Start Exam
+          </a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon" aria-hidden="true">📋</div>
+      <h3 class="empty-title">No exams available</h3>
+      <p class="empty-desc">There are no exams scheduled for you right now. Check back later.</p>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- ── Recent Results ─────────────────────────── -->
+  {% if recent_results %}
+  <section aria-labelledby="results-heading" style="margin-top: 2.5rem;">
+    <div class="section-header">
+      <h2 class="section-title" id="results-heading">
+        <i class="fas fa-history" aria-hidden="true"></i>
+        Recent Results
+      </h2>
+      <a href="{{ url_for('exam.my_results') }}" class="btn btn-ghost btn-sm">
+        View All <i class="fas fa-arrow-right" aria-hidden="true"></i>
+      </a>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="data-table" aria-label="Your recent exam results">
+          <thead>
+            <tr>
+              <th scope="col">Exam</th>
+              <th scope="col">Score</th>
+              <th scope="col">Percentage</th>
+              <th scope="col">Status</th>
+              <th scope="col">Date</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for result in recent_results %}
+            <tr>
+              <td>
+                <strong>{{ result.exam.title }}</strong>
+                <div style="font-size:var(--font-size-xs);color:var(--text-muted);">
+                  {{ result.exam.subject }}
+                </div>
+              </td>
+              <td>{{ result.score }} / {{ result.total_marks }}</td>
+              <td>
+                <div class="score-display">
+                  <div class="score-bar-wrap">
+                    <div class="score-bar"
+                         style="width:{{ result.percentage }}%;
+                                background:{{ '#16a34a' if result.passed else '#dc2626' }};"
+                         role="progressbar"
+                         aria-valuenow="{{ result.percentage }}"
+                         aria-valuemin="0" aria-valuemax="100"
+                         aria-label="{{ result.percentage }}%">
+                    </div>
+                  </div>
+                  <span class="score-pct">{{ result.percentage }}%</span>
+                </div>
+              </td>
+              <td>
+                {% if result.passed %}
+                <span class="badge badge-success">PASSED</span>
+                {% else %}
+                <span class="badge badge-danger">FAILED</span>
+                {% endif %}
+                {% if result.flagged_for_malpractice %}
+                <span class="badge badge-warning" title="Flagged for review">
+                  <i class="fas fa-flag" aria-hidden="true"></i>
+                </span>
+                {% endif %}
+                {% if result.status == 'auto_submitted' %}
+                <span class="badge badge-neutral" title="Auto-submitted by system">
+                  AUTO
+                </span>
+                {% endif %}
+              </td>
+              <td>
+                <time datetime="{{ result.submitted_at.isoformat() }}">
+                  {{ result.submitted_at.strftime('%d %b %Y') }}
+                </time>
+              </td>
+              <td>
+                <a href="{{ url_for('exam.view_result', result_id=result.id) }}"
+                   class="btn btn-ghost btn-sm"
+                   aria-label="View result for {{ result.exam.title }}">
+                  View
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+</div><!-- /.page-container -->
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Welcome Banner */
+.welcome-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  border-radius: var(--radius-2xl);
+  padding: 2rem 2.5rem;
+  margin-bottom: 2rem;
+  color: white;
+  overflow: hidden;
+  position: relative;
+}
+.welcome-title { font-size: var(--font-size-2xl); font-weight: 800; color: white; margin-bottom: 0.5rem; }
+.welcome-subtitle { color: rgba(255,255,255,0.85); font-size: var(--font-size-base); }
+.welcome-avatar {
+  width: 5rem; height: 5rem;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; font-weight: 800; color: white;
+  flex-shrink: 0;
+}
+
+/* Alert */
+.alert {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid;
+  margin-bottom: 1.5rem;
+}
+.alert-warning { background: var(--color-warning-light); border-color: var(--color-warning); color: #78350f; }
+.alert-icon { font-size: 1.5rem; flex-shrink: 0; }
+.alert-body { flex: 1; }
+.alert-body p { margin-top: 0.25rem; font-size: var(--font-size-sm); }
+.btn-warning { background: var(--color-warning); color: white; border-color: var(--color-warning); }
+.btn-warning:hover { background: #b45309; color: white; text-decoration: none; }
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+}
+.stat-card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: box-shadow var(--transition-base);
+}
+.stat-card:hover { box-shadow: var(--shadow-md); }
+.stat-icon {
+  width: 3rem; height: 3rem;
+  border-radius: var(--radius-lg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+.stat-icon-blue   { background: var(--color-primary-light);  color: var(--color-primary); }
+.stat-icon-green  { background: var(--color-success-light);  color: var(--color-success); }
+.stat-icon-purple { background: var(--color-secondary-light);color: var(--color-secondary); }
+.stat-icon-amber  { background: var(--color-warning-light);  color: var(--color-warning); }
+.stat-value { font-size: var(--font-size-2xl); font-weight: 800; color: var(--text-primary); line-height: 1; }
+.stat-label { font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 0.25rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Section headers */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.section-title { font-size: var(--font-size-xl); font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem; }
+
+/* Exam cards */
+.exam-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; }
+.exam-card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  display: flex; flex-direction: column; gap: 0.75rem;
+  transition: all var(--transition-base);
+}
+.exam-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); border-color: var(--color-primary); }
+.exam-card-header { display: flex; align-items: center; justify-content: space-between; }
+.subject-badge { background: var(--color-primary-light); color: var(--color-primary); padding: 2px 0.75rem; border-radius: 9999px; font-size: var(--font-size-xs); font-weight: 600; }
+.webcam-badge { color: var(--color-secondary); font-size: var(--font-size-sm); }
+.exam-card-title { font-size: var(--font-size-lg); font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+.exam-card-desc { font-size: var(--font-size-sm); color: var(--text-secondary); line-height: 1.5; }
+.exam-card-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.meta-item { font-size: var(--font-size-xs); color: var(--text-muted); display: flex; align-items: center; gap: 0.25rem; font-weight: 500; }
+.exam-card-footer { margin-top: auto; padding-top: 0.75rem; border-top: 1px solid var(--surface-border); }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 4rem 2rem; }
+.empty-icon { font-size: 4rem; margin-bottom: 1rem; }
+.empty-title { font-size: var(--font-size-xl); font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; }
+.empty-desc { color: var(--text-secondary); }
+
+/* Table */
+.table-responsive { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { text-align: left; font-size: var(--font-size-xs); font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--surface-border); white-space: nowrap; }
+.data-table td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--surface-border); font-size: var(--font-size-sm); color: var(--text-primary); vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--surface-hover); }
+
+/* Score bar */
+.score-display { display: flex; align-items: center; gap: 0.5rem; }
+.score-bar-wrap { flex: 1; height: 6px; background: var(--surface-border); border-radius: 9999px; overflow: hidden; min-width: 60px; }
+.score-bar { height: 100%; border-radius: 9999px; transition: width 0.5s ease; }
+.score-pct { font-weight: 600; font-size: var(--font-size-xs); white-space: nowrap; }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 2px 0.5rem; border-radius: 9999px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; }
+.badge-success { background: var(--color-success-light); color: var(--color-success); }
+.badge-danger  { background: var(--color-danger-light);  color: var(--color-danger); }
+.badge-warning { background: var(--color-warning-light); color: var(--color-warning); }
+.badge-neutral { background: var(--color-gray-100); color: var(--color-gray-600); }
+
+@media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) {
+  .welcome-banner { flex-direction: column; text-align: center; gap: 1rem; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .exam-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

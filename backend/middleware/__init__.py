@@ -1,0 +1,1 @@
+from .security_middleware import register_middleware

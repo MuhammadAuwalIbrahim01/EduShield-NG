@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Manage Students{% endblock %}
+{% block content %}
+<div class="page-container">
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title"><i class="fas fa-users" aria-hidden="true"></i> Manage Students</h1>
+      <p class="page-subtitle">{{ students|length }} student{{ 's' if students|length != 1 }} registered</p>
+    </div>
+  </div>
+
+  <form method="GET" class="filter-bar">
+    <div class="filter-search">
+      <i class="fas fa-search filter-search-icon" aria-hidden="true"></i>
+      <input type="search" name="q" value="{{ search }}" class="form-control filter-search-input"
+             placeholder="Search by name, email, or student ID..." />
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-search" aria-hidden="true"></i> Search</button>
+    {% if search %}<a href="{{ url_for('admin.students') }}" class="btn btn-ghost">Clear</a>{% endif %}
+  </form>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr><th>Name</th><th>Email</th><th>Student ID</th><th>Institution</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for student in students %}
+          <tr>
+            <td>
+              <a href="{{ url_for('admin.student_detail', student_id=student.id) }}" style="font-weight:600;">
+                {{ student.full_name }}
+              </a>
+              {% if student.is_flagged %}<i class="fas fa-flag" style="color:var(--color-danger);margin-left:0.4rem;" title="Flagged"></i>{% endif %}
+            </td>
+            <td>{{ student.email }}</td>
+            <td>{{ student.student_id or '—' }}</td>
+            <td>{{ student.institution or '—' }}</td>
+            <td>
+              {% if student.is_active %}<span class="badge badge-success">Active</span>
+              {% else %}<span class="badge badge-danger">Suspended</span>{% endif %}
+              {% if not student.is_verified %}<span class="badge badge-warning">Unverified</span>{% endif %}
+            </td>
+            <td style="display:flex;gap:0.4rem;">
+              <form method="POST" action="{{ url_for('admin.toggle_suspend', student_id=student.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit" class="btn btn-ghost btn-sm" title="{{ 'Suspend' if student.is_active else 'Reactivate' }}"
+                        onclick="return confirm('{{ 'Suspend' if student.is_active else 'Reactivate' }} {{ student.full_name }}?');">
+                  <i class="fas fa-{{ 'ban' if student.is_active else 'check-circle' }}" aria-hidden="true"
+                     style="color:{{ 'var(--color-danger)' if student.is_active else 'var(--color-success)' }};"></i>
+                </button>
+              </form>
+              <a href="{{ url_for('admin.student_detail', student_id=student.id) }}" class="btn btn-ghost btn-sm" title="View Details">
+                <i class="fas fa-eye" aria-hidden="true"></i>
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" style="text-align:center;padding:3rem;color:var(--text-muted);">No students found</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

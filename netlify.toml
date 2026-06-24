@@ -1,0 +1,38 @@
+# netlify.toml — Netlify Deployment Configuration
+# ===================================================
+# This configures the STATIC LANDING PAGE ONLY (netlify-landing/index.html).
+# It does NOT deploy the Flask backend — Netlify cannot run a persistent
+# Python/PostgreSQL service. See Day 10 notes for why the real application
+# lives on Render and this is a companion marketing page only.
+#
+# To deploy:
+#   1. Push this repo to GitHub
+#   2. In Netlify: "Add new site" > "Import an existing project"
+#   3. Set "Base directory" to: netlify-landing
+#   4. Build command: (leave empty — it's static HTML, nothing to build)
+#   5. Publish directory: netlify-landing  (or "." if base directory is set)
+
+[build]
+  base = "netlify-landing"
+  publish = "netlify-landing"
+  command = ""
+
+# Security headers for the static landing page — same philosophy as
+# Day 4's Flask middleware headers, applied here since this is a
+# separate origin that also deserves hardening.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data:;"
+
+# Redirect bare domain traffic straight to the real app's login page
+# if someone bookmarks the Netlify URL expecting the app itself.
+# (Optional — remove if you'd rather they always see the landing page.)
+[[redirects]]
+  from = "/app/*"
+  to = "https://edushield-ng.onrender.com/:splat"
+  status = 301
+  force = true

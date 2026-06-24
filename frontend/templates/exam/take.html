@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+<!--
+  exam/take.html — Live Exam Interface
+  ======================================
+  This is the most critical page in EduShield NG.
+
+  Features built into this template:
+    - Server-synced countdown timer
+    - Question navigator sidebar
+    - Auto-save on every answer change (fetch API)
+    - Anti-cheat event detection (anti_cheat.js)
+    - Webcam panel (face_monitor.js)
+    - TTS: reads question aloud when enabled
+    - Keyboard navigation between questions
+    - Final submit with confirmation modal
+    - No browser navigation (back button blocked)
+    - No footer (full focus on exam)
+-->
+{% block title %}{{ exam.title }} — Exam in Progress{% endblock %}
+{% block footer %}{% endblock %}
+{% block body_class %}exam-active-page{% endblock %}
+
+<!-- Override base navbar with minimal exam header -->
+{% block content %}
+
+<!-- ── Exam Header (replaces full navbar) ─── -->
+<header class="exam-header" role="banner">
+  <div class="exam-header-left">
+    <span class="exam-header-logo" aria-hidden="true">🛡️</span>
+    <div class="exam-header-info">
+      <h1 class="exam-header-title">{{ exam.title }}</h1>
+      <span class="exam-header-subject">{{ exam.subject }}</span>
+    </div>
+  </div>
+
+  <div class="exam-header-center">
+    <!-- Countdown timer — synced with server deadline -->
+    <div class="exam-timer"
+         id="examTimer"
+         role="timer"
+         aria-live="polite"
+         aria-label="Time remaining"
+         data-deadline="{{ exam_session.deadline.isoformat() }}"
+         data-seconds="{{ seconds_remaining }}">
+      <i class="fas fa-clock" aria-hidden="true"></i>
+      <span id="timerDisplay">--:--</span>
+    </div>
+  </div>
+
+  <div class="exam-header-right">
+    <div class="exam-progress-info">
+      <span id="answeredCount">{{ saved_answers|length }}</span>
+      / {{ questions|length }} answered
+    </div>
+    <button type="button"
+            class="btn btn-danger btn-sm"
+            id="submitBtn"
+            aria-label="Submit examination">
+      <i class="fas fa-paper-plane" aria-hidden="true"></i>
+      Submit
+    </button>
+  </div>
+</header>
+
+<!-- ── Webcam Panel (top-right corner during exam) ── -->
+{% if exam.webcam_required %}
+<div class="webcam-panel" id="webcamPanel" aria-label="Webcam monitoring active">
+  <video id="webcamVideo" autoplay muted playsinline
+         aria-label="Your camera feed" width="160" height="120"></video>
+  <div class="webcam-status" id="webcamStatus">
+    <span class="status-dot status-dot-green" id="webcamDot"></span>
+    <span id="webcamStatusText">Starting camera...</span>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Main Exam Layout ─────────────────────── -->
+<div class="exam-layout">
+
+  <!-- Sidebar: Question Navigator -->
+  <aside class="exam-sidebar" aria-label="Question navigation">
+    <div class="sidebar-header">
+      <h2 class="sidebar-title">Questions</h2>
+      <button class="sidebar-toggle-btn" id="sidebarToggle"
+              aria-label="Toggle question panel" aria-expanded="true">
+        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <nav class="question-nav" aria-label="Jump to question">
+      <ul class="question-nav-list" id="questionNavList" role="list">
+        {% for q in questions %}
+        <li>
+          <button class="q-nav-btn {% if saved_answers.get(q.id|string) %}q-nav-answered{% endif %}"
+                  data-question="{{ loop.index0 }}"
+                  id="nav-{{ loop.index0 }}"
+                  aria-label="Question {{ loop.index }}: {% if saved_answers.get(q.id|string) %}answered{% else %}not answered{% endif %}"
+                  onclick="goToQuestion({{ loop.index0 }})">
+            {{ loop.index }}
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+    </nav>
+
+    <div class="sidebar-legend" aria-label="Legend">
+      <div class="legend-item">
+        <span class="q-nav-btn q-nav-answered" aria-hidden="true" style="pointer-events:none;">1</span>
+        <span>Answered</span>
+      </div>
+      <div class="legend-item">
+        <span class="q-nav-btn" aria-hidden="true" style="pointer-events:none;">2</span>
+        <span>Not answered</span>
+      </div>
+      <div class="legend-item">
+        <span class="q-nav-btn q-nav-current" aria-hidden="true" style="pointer-events:none;">3</span>
+        <span>Current</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main: Questions -->
+  <main class="exam-main" id="main-content" tabindex="-1" role="main"
+        aria-label="Examination questions">
+
+    <!-- Hidden data for JavaScript -->
+    <div id="examData"
+         data-session-token="{{ exam_session.session_token }}"
+         data-exam-id="{{ exam.id }}"
+         data-total="{{ questions|length }}"
+         data-save-url="{{ url_for('exam.save_answer') }}"
+         data-submit-url="{{ url_for('exam.submit_exam') }}"
+         data-log-url="{{ url_for('exam.log_cheat_event') }}"
+         data-webcam="{{ 'true' if exam.webcam_required else 'false' }}"
+         data-max-tab-switches="{{ exam.max_tab_switches }}"
+         style="display:none;">
+    </div>
+
+    <!-- Questions (all rendered, JS shows one at a time) -->
+    {% for q in questions %}
+    <article class="question-card"
+             id="question-{{ loop.index0 }}"
+             data-question-id="{{ q.id }}"
+             data-index="{{ loop.index0 }}"
+             aria-labelledby="q-text-{{ loop.index0 }}"
+             {% if loop.index0 != 0 %}hidden{% endif %}>
+
+      <!-- Question header -->
+      <div class="question-header">
+        <span class="question-number">Question {{ loop.index }} of {{ questions|length }}</span>
+        <span class="question-marks">
+          <i class="fas fa-star" aria-hidden="true"></i>
+          {{ q.marks }} mark{{ 's' if q.marks != 1 }}
+        </span>
+      </div>
+
+      <!-- Question text -->
+      <div class="question-text" id="q-text-{{ loop.index0 }}">
+        {{ q.text }}
+      </div>
+
+      <!-- TTS button for this question -->
+      <button type="button"
+              class="tts-question-btn"
+              aria-label="Read question {{ loop.index }} aloud"
+              data-text="{{ q.text }} Option A: {{ q.shuffled_options[0][1] }}. Option B: {{ q.shuffled_options[1][1] }}. Option C: {{ q.shuffled_options[2][1] }}. Option D: {{ q.shuffled_options[3][1] }}.">
+        <i class="fas fa-volume-up" aria-hidden="true"></i> Read Aloud
+      </button>
+
+      <!-- Answer options -->
+      <fieldset class="options-fieldset">
+        <legend class="sr-only">Answer options for question {{ loop.index }}</legend>
+
+        {% set current_answer = saved_answers.get(q.id|string, '') %}
+
+        {% for letter, text in q.shuffled_options %}
+        <label class="option-label {% if current_answer == letter %}option-selected{% endif %}"
+               id="opt-label-{{ loop.index0 }}-{{ letter }}"
+               for="opt-{{ q.id }}-{{ letter }}">
+
+          <input type="radio"
+                 class="option-radio"
+                 id="opt-{{ q.id }}-{{ letter }}"
+                 name="answer_{{ q.id }}"
+                 value="{{ letter }}"
+                 data-question-id="{{ q.id }}"
+                 data-question-index="{{ loop.index0 }}"
+                 {% if current_answer == letter %}checked{% endif %}
+                 aria-label="Option {{ letter }}: {{ text }}" />
+
+          <span class="option-letter" aria-hidden="true">{{ letter }}</span>
+          <span class="option-text">{{ text }}</span>
+        </label>
+        {% endfor %}
+
+      </fieldset>
+
+      <!-- Navigation buttons -->
+      <div class="question-nav-btns">
+        {% if not loop.first %}
+        <button type="button" class="btn btn-ghost" onclick="prevQuestion()">
+          <i class="fas fa-arrow-left" aria-hidden="true"></i> Previous
+        </button>
+        {% else %}
+        <span></span>
+        {% endif %}
+
+        {% if not loop.last %}
+        <button type="button" class="btn btn-primary" onclick="nextQuestion()">
+          Next <i class="fas fa-arrow-right" aria-hidden="true"></i>
+        </button>
+        {% else %}
+        <button type="button" class="btn btn-primary" id="reviewBtn" onclick="openSubmitModal()">
+          <i class="fas fa-check" aria-hidden="true"></i> Review &amp; Submit
+        </button>
+        {% endif %}
+      </div>
+
+    </article>
+    {% endfor %}
+
+    <!-- Auto-save indicator -->
+    <div class="autosave-indicator" id="autosaveIndicator" aria-live="polite" aria-atomic="true">
+      <i class="fas fa-cloud" aria-hidden="true" id="saveIcon"></i>
+      <span id="saveText">All answers saved</span>
+    </div>
+
+  </main>
+</div><!-- /.exam-layout -->
+
+<!-- ── Submit Confirmation Modal ─────────────── -->
+<div class="modal-overlay" id="submitModal" role="dialog"
+     aria-modal="true" aria-labelledby="modal-title" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title" class="modal-title">
+        <i class="fas fa-paper-plane" aria-hidden="true"></i>
+        Submit Examination?
+      </h2>
+    </div>
+    <div class="modal-body">
+      <p>You are about to submit your exam. Please review:</p>
+      <ul class="submit-summary" id="submitSummary"></ul>
+      <p class="modal-warning">
+        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+        <strong>This action cannot be undone.</strong>
+        Once submitted, you cannot change your answers.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" onclick="closeSubmitModal()">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i> Go Back
+      </button>
+      <button type="button" class="btn btn-danger" id="confirmSubmitBtn"
+              onclick="confirmSubmit()">
+        <i class="fas fa-paper-plane" aria-hidden="true"></i>
+        Confirm Submit
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tab Switch Warning Modal ──────────────── -->
+<div class="modal-overlay" id="tabSwitchModal" role="alertdialog"
+     aria-modal="true" aria-labelledby="tab-modal-title" hidden>
+  <div class="modal modal-warning-style">
+    <div class="modal-header" style="background:var(--color-danger);border-radius:var(--radius-xl) var(--radius-xl) 0 0;">
+      <h2 id="tab-modal-title" style="color:white;font-size:var(--font-size-xl);font-weight:800;">
+        ⚠️ Warning: Tab Switch Detected
+      </h2>
+    </div>
+    <div class="modal-body">
+      <p>You have switched away from the exam window.</p>
+      <p id="tabSwitchCount" style="font-size:var(--font-size-lg);font-weight:700;color:var(--color-danger);"></p>
+      <p>Your exam will be <strong>automatically submitted</strong> if you exceed the limit.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="dismissTabWarning()"
+              id="tabWarningDismiss">
+        I Understand — Return to Exam
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/exam.css') }}" />
+{% endblock %}
+
+{% block extra_js %}
+<!-- Anti-cheat module — MUST load first -->
+<script src="{{ url_for('static', filename='js/anti_cheat.js') }}"></script>
+<!-- Face monitoring module -->
+{% if exam.webcam_required %}
+<script src="{{ url_for('static', filename='js/face_monitor.js') }}" defer></script>
+{% endif %}
+<!-- Main exam logic -->
+<script src="{{ url_for('static', filename='js/exam_engine.js') }}"></script>
+{% endblock %}

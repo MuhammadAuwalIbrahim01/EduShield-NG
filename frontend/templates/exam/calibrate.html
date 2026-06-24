@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+<!--
+  exam/calibrate.html — Face Calibration Page
+  ==============================================
+  Shown once per student before their FIRST webcam-required exam.
+  Captures a 128-number face descriptor via face-api.js and saves
+  it to the student's profile for future identity verification.
+
+  Flow:
+    1. Load face-api.js + models
+    2. Start webcam
+    3. Detect face + extract descriptor (need 3 consistent reads)
+    4. POST descriptor to server
+    5. Redirect to exam instructions
+-->
+{% block title %}Face Calibration{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="calibrate-wrapper">
+  <div class="calibrate-card">
+
+    <div class="calibrate-header">
+      <div class="calibrate-icon" aria-hidden="true">🎯</div>
+      <h1 class="calibrate-title">Face Calibration</h1>
+      <p class="calibrate-subtitle">
+        Before starting <strong>{{ exam.title }}</strong>, we need to register
+        your face for identity verification during the exam.
+      </p>
+    </div>
+
+    <div class="calibrate-video-wrap">
+      <video id="calibrateVideo" autoplay muted playsinline
+             aria-label="Camera preview for face calibration"></video>
+      <canvas id="calibrateOverlay" aria-hidden="true"></canvas>
+
+      <!-- Status ring around the video -->
+      <div class="calibrate-status-ring" id="statusRing"></div>
+    </div>
+
+    <!-- Status message -->
+    <div class="calibrate-status" id="calibrateStatus" role="status" aria-live="polite">
+      <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+      <span id="statusText">Starting camera...</span>
+    </div>
+
+    <!-- Progress dots: shows capture progress (need 3 consistent reads) -->
+    <div class="calibrate-progress" aria-label="Calibration progress">
+      <span class="progress-dot" id="dot-1"></span>
+      <span class="progress-dot" id="dot-2"></span>
+      <span class="progress-dot" id="dot-3"></span>
+    </div>
+
+    <!-- Tips -->
+    <div class="calibrate-tips">
+      <h2 class="tips-title">For best results:</h2>
+      <ul class="tips-list">
+        <li><i class="fas fa-lightbulb" aria-hidden="true"></i> Sit in a well-lit room facing the camera</li>
+        <li><i class="fas fa-glasses" aria-hidden="true"></i> Remove sunglasses or masks if worn</li>
+        <li><i class="fas fa-user" aria-hidden="true"></i> Make sure only your face is in frame</li>
+        <li><i class="fas fa-arrows-alt" aria-hidden="true"></i> Stay still for a few seconds when prompted</li>
+      </ul>
+    </div>
+
+    <!-- Manual retry / skip (skip only if webcam genuinely unavailable) -->
+    <div class="calibrate-actions">
+      <button type="button" class="btn btn-ghost" id="retryBtn" hidden>
+        <i class="fas fa-redo" aria-hidden="true"></i> Try Again
+      </button>
+      <a href="{{ url_for('exam.student_dashboard') }}" class="btn btn-ghost">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i> Cancel
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.calibrate-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #7c3aed 100%);
+}
+.calibrate-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-2xl);
+  padding: 2.5rem;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--shadow-xl);
+  text-align: center;
+}
+.calibrate-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+.calibrate-title { font-size: var(--font-size-2xl); font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem; }
+.calibrate-subtitle { color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.6; margin-bottom: 1.5rem; }
+
+.calibrate-video-wrap {
+  position: relative;
+  width: 280px;
+  height: 210px;
+  margin: 0 auto 1.25rem;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: #000;
+}
+#calibrateVideo {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* Mirror for natural selfie feel */
+}
+#calibrateOverlay {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.calibrate-status-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: var(--radius-xl);
+  border: 3px solid var(--color-gray-300);
+  transition: border-color 0.3s ease;
+  pointer-events: none;
+}
+.calibrate-status-ring.ring-detecting { border-color: var(--color-warning); animation: ringPulse 1.5s infinite; }
+.calibrate-status-ring.ring-success   { border-color: var(--color-success); }
+.calibrate-status-ring.ring-error     { border-color: var(--color-danger); }
+@keyframes ringPulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+.calibrate-status {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  font-size: var(--font-size-sm); font-weight: 600; color: var(--text-secondary);
+  margin-bottom: 1rem; min-height: 1.5rem;
+}
+.calibrate-status.status-success { color: var(--color-success); }
+.calibrate-status.status-error   { color: var(--color-danger); }
+
+.calibrate-progress { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+.progress-dot {
+  width: 0.75rem; height: 0.75rem; border-radius: 50%;
+  background: var(--surface-border); transition: all 0.3s ease;
+}
+.progress-dot.dot-active { background: var(--color-warning); transform: scale(1.2); }
+.progress-dot.dot-done   { background: var(--color-success); }
+
+.calibrate-tips { text-align: left; background: var(--surface-hover); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+.tips-title { font-size: var(--font-size-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem; }
+.tips-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.tips-list li { font-size: var(--font-size-xs); color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem; }
+.tips-list i { color: var(--color-primary); width: 1rem; flex-shrink: 0; }
+
+.calibrate-actions { display: flex; justify-content: center; gap: 0.75rem; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const EXAM_ID = {{ exam.id }};
+const SAVE_URL = "{{ url_for('exam.save_calibration') }}";
+
+let video, overlay, ctx;
+let stream = null;
+let modelsLoaded = false;
+let captures = [];          // Collected descriptors
+let requiredCaptures = 3;   // Need 3 consistent reads
+let captureInProgress = false;
+
+const statusRing = document.getElementById('statusRing');
+const statusText = document.getElementById('statusText');
+const statusBox  = document.getElementById('calibrateStatus');
+const retryBtn   = document.getElementById('retryBtn');
+
+function setStatus(text, state) {
+  statusText.textContent = text;
+  statusBox.className = 'calibrate-status' + (state === 'success' ? ' status-success' : state === 'error' ? ' status-error' : '');
+  statusRing.className = 'calibrate-status-ring' + (state === 'detecting' ? ' ring-detecting' : state === 'success' ? ' ring-success' : state === 'error' ? ' ring-error' : '');
+}
+
+function markDot(index, state) {
+  const dot = document.getElementById('dot-' + index);
+  if (!dot) return;
+  dot.className = 'progress-dot' + (state === 'active' ? ' dot-active' : state === 'done' ? ' dot-done' : '');
+}
+
+async function loadFaceApi() {
+  return new Promise((resolve, reject) => {
+    if (window.faceapi) { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js';
+    script.crossOrigin = 'anonymous';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('face-api.js failed to load'));
+    document.head.appendChild(script);
+  });
+}
+
+async function loadModels() {
+  const MODELS = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+  await Promise.all([
+    faceapi.nets.ssdMobilenetv1.loadFromUri(MODELS),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODELS),
+    faceapi.nets.faceRecognitionNet.loadFromUri(MODELS),
+  ]);
+}
+
+async function startCamera() {
+  video = document.getElementById('calibrateVideo');
+  overlay = document.getElementById('calibrateOverlay');
+
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 360 } },
+    audio: false,
+  });
+  video.srcObject = stream;
+  await new Promise(resolve => { video.onloadedmetadata = resolve; });
+  await video.play();
+
+  overlay.width = video.clientWidth;
+  overlay.height = video.clientHeight;
+  ctx = overlay.getContext('2d');
+}
+
+async function captureLoop() {
+  if (captureInProgress || captures.length >= requiredCaptures) return;
+
+  try {
+    const detection = await faceapi
+      .detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ scoreThreshold: 0.6 }))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    if (!detection) {
+      setStatus('No face detected — please look at the camera', 'error');
+      markDot(captures.length + 1, null);
+    } else {
+      captureInProgress = true;
+      markDot(captures.length + 1, 'active');
+      setStatus(`Capturing... hold still (${captures.length + 1}/${requiredCaptures})`, 'detecting');
+
+      // Brief pause so the dot animation is visible and to capture a
+      // genuinely separate frame (not the exact same millisecond)
+      await new Promise(r => setTimeout(r, 800));
+
+      captures.push(Array.from(detection.descriptor));
+      markDot(captures.length, 'done');
+      captureInProgress = false;
+
+      if (captures.length >= requiredCaptures) {
+        await finishCalibration();
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('Calibration detection error:', err);
+  }
+
+  setTimeout(captureLoop, 700);
+}
+
+function averageDescriptors(descriptorList) {
+  // Average the 3 captures element-wise for a more stable reference vector
+  const length = descriptorList[0].length;
+  const avg = new Array(length).fill(0);
+  for (const d of descriptorList) {
+    for (let i = 0; i < length; i++) avg[i] += d[i] / descriptorList.length;
+  }
+  return avg;
+}
+
+async function finishCalibration() {
+  setStatus('Calibration complete! Saving...', 'success');
+
+  const avgDescriptor = averageDescriptors(captures);
+
+  try {
+    const res = await fetch(SAVE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': window.EduShield?.getCsrfToken?.() || '',
+      },
+      body: JSON.stringify({ descriptor: avgDescriptor, exam_id: EXAM_ID }),
+    });
+    const data = await res.json();
+
+    if (data.status === 'saved') {
+      setStatus('✓ Calibration saved! Redirecting...', 'success');
+      // Stop camera before navigating away
+      stream?.getTracks().forEach(t => t.stop());
+      setTimeout(() => { window.location.href = data.redirect_url; }, 1000);
+    } else {
+      throw new Error(data.error || 'Save failed');
+    }
+  } catch (err) {
+    setStatus('Failed to save calibration. Please try again.', 'error');
+    retryBtn.hidden = false;
+  }
+}
+
+async function init() {
+  try {
+    setStatus('Loading AI models...', 'detecting');
+    await loadFaceApi();
+    await loadModels();
+    modelsLoaded = true;
+
+    setStatus('Requesting camera access...', 'detecting');
+    await startCamera();
+
+    setStatus('Look directly at the camera', 'detecting');
+    setTimeout(captureLoop, 1000);
+
+  } catch (err) {
+    console.error('Calibration init failed:', err);
+    if (err.name === 'NotAllowedError') {
+      setStatus('Camera access denied. Please allow camera access and retry.', 'error');
+    } else {
+      setStatus('Unable to start calibration: ' + err.message, 'error');
+    }
+    retryBtn.hidden = false;
+  }
+}
+
+retryBtn.addEventListener('click', () => {
+  retryBtn.hidden = true;
+  captures = [];
+  [1,2,3].forEach(i => markDot(i, null));
+  init();
+});
+
+init();
+
+window.addEventListener('beforeunload', () => {
+  stream?.getTracks().forEach(t => t.stop());
+});
+</script>
+{% endblock %}

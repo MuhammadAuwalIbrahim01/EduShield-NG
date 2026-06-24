@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Results: {{ exam.title }}{% endblock %}
+
+{% block content %}
+<div class="page-container">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title"><i class="fas fa-chart-bar" aria-hidden="true"></i> {{ exam.title }}</h1>
+      <p class="page-subtitle">{{ results|length }} completed attempt{{ 's' if results|length != 1 }}</p>
+    </div>
+    <div class="page-header-right">
+      <a href="{{ url_for('admin.export_results_csv', exam_id=exam.id) }}" class="btn btn-outline">
+        <i class="fas fa-file-csv" aria-hidden="true"></i> Export CSV
+      </a>
+      <a href="{{ url_for('admin.edit_exam', exam_id=exam.id) }}" class="btn btn-ghost">
+        <i class="fas fa-edit" aria-hidden="true"></i> Edit Exam
+      </a>
+    </div>
+  </div>
+
+  {% if results %}
+  {% set passed = results|selectattr('passed')|list|length %}
+  {% set avg = (results|sum(attribute='percentage') / results|length)|round(1) %}
+  <div class="results-summary-bar">
+    <div class="summary-stat">
+      <span class="summary-value">{{ results|length }}</span>
+      <span class="summary-label">Attempts</span>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat">
+      <span class="summary-value" style="color:var(--color-success);">{{ passed }}</span>
+      <span class="summary-label">Passed</span>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat">
+      <span class="summary-value" style="color:var(--color-danger);">{{ results|length - passed }}</span>
+      <span class="summary-label">Failed</span>
+    </div>
+    <div class="summary-divider"></div>
+    <div class="summary-stat">
+      <span class="summary-value">{{ avg }}%</span>
+      <span class="summary-label">Average Score</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr><th>Rank</th><th>Student</th><th>Score</th><th>Percentage</th><th>Status</th><th>Integrity</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+          <tr class="{% if r.flagged_for_malpractice %}row-high{% endif %}">
+            <td>{{ loop.index }}</td>
+            <td>
+              <a href="{{ url_for('admin.student_detail', student_id=r.student.id) }}" style="font-weight:600;">
+                {{ r.student.full_name }}
+              </a>
+              <div style="font-size:var(--font-size-xs);color:var(--text-muted);">{{ r.student.student_id or r.student.email }}</div>
+            </td>
+            <td>{{ r.score }} / {{ r.total_marks }}</td>
+            <td>
+              <div class="score-display">
+                <div class="score-bar-wrap">
+                  <div class="score-bar" style="width:{{ r.percentage }}%;background:{{ '#16a34a' if r.passed else '#dc2626' }};"></div>
+                </div>
+                <span class="score-pct">{{ r.percentage }}%</span>
+              </div>
+            </td>
+            <td>
+              <span class="badge badge-{{ 'success' if r.passed else 'danger' }}">{{ 'PASS' if r.passed else 'FAIL' }}</span>
+              {% if r.status == 'auto_submitted' %}<span class="badge badge-neutral">AUTO</span>{% endif %}
+            </td>
+            <td>
+              {% if r.flagged_for_malpractice %}
+              <span class="badge badge-warning"><i class="fas fa-flag" aria-hidden="true"></i> Flagged</span>
+              {% else %}
+              <span style="color:var(--text-muted);font-size:var(--font-size-xs);">Clean</span>
+              {% endif %}
+              {% if r.tab_switches > 0 %}
+              <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">{{ r.tab_switches }} tab switch{{ 'es' if r.tab_switches != 1 }}</div>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('exam.view_result', result_id=r.id) }}" class="btn btn-ghost btn-sm">
+                <i class="fas fa-eye" aria-hidden="true"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📊</div>
+    <h3 class="empty-title">No attempts yet</h3>
+    <p class="empty-desc">No students have completed this exam yet.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

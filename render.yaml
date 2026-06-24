@@ -1,0 +1,92 @@
+# render.yaml — Render.com Deployment Configuration (Blueprint)
+# =================================================================
+# This file lets Render auto-provision both the web service AND the
+# database in one step via "New + > Blueprint" in the Render dashboard,
+# instead of configuring each piece by hand through the UI.
+#
+# IMPORTANT — READ BEFORE DEPLOYING:
+#
+# 1. REGION: "oregon" is Render's US-West region. Render does NOT have
+#    a Nigeria or African region as of this writing. For a Nigeria-
+#    focused platform, the realistic options are:
+#      - oregon / ohio (US)     — ~150-250ms latency to Lagos
+#      - frankfurt (EU)         — ~120-180ms latency to Lagos, often the
+#                                  better choice for West African users
+#    We default to frankfurt below for this reason. Change if your
+#    actual user base is elsewhere.
+#
+# 2. FREE POSTGRESQL EXPIRES: Render's free PostgreSQL databases are
+#    automatically deleted 90 days after creation. This is fine for a
+#    portfolio demo but WILL lose your data in production. Before that
+#    90-day mark, either upgrade the database plan or migrate your data
+#    out. This is not a hypothetical edge case — it WILL happen if you
+#    deploy this and leave it on the free tier.
+#
+# 3. FREE WEB SERVICE SLEEPS: Render's free web service tier spins down
+#    after 15 minutes of no traffic and takes ~30-50 seconds to wake up
+#    on the next request. Acceptable for a demo; not acceptable for a
+#    real exam where a student is waiting at the login page.
+
+services:
+  - type: web
+    name: edushield-ng
+    env: python
+    region: frankfurt          # See note #1 above — closer to Nigeria than Oregon
+    plan: free                 # See note #3 above — upgrade before real exams
+
+    # Build command: install dependencies
+    buildCommand: pip install -r requirements.txt
+
+    # Start command: gunicorn with 4 worker processes
+    # 4 workers = handles 4 concurrent requests per dyno
+    # --timeout 120 = generous timeout for slower connections (Day 5's
+    #   AI model downloads happen client-side, so this is just for
+    #   normal request handling, not blocking on face-api.js)
+    startCommand: gunicorn wsgi:app --workers 4 --bind 0.0.0.0:$PORT --timeout 120
+
+    # Health check — Render pings this every 30s. If it stops responding
+    # with 200, Render considers the service unhealthy and may restart it.
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: FLASK_ENV
+        value: production
+
+      # Render auto-generates a cryptographically secure random value —
+      # we NEVER hardcode this, and it's different from your local .env
+      - key: SECRET_KEY
+        generateValue: true
+
+      # Linked to the database block below — Render injects the real
+      # PostgreSQL connection string automatically at deploy time
+      - key: DATABASE_URL
+        fromDatabase:
+          name: edushield-db
+          property: connectionString
+
+      # CORS allowlist — restrict to your actual frontend domain(s).
+      # Update this after your first deploy once you know your Render
+      # URL (e.g. https://edushield-ng.onrender.com) and any custom
+      # domain or Netlify companion site you attach.
+      - key: ALLOWED_ORIGINS
+        value: "https://edushield-ng.onrender.com"
+
+      # Initial admin account — CHANGE THESE before going live.
+      # Render lets you mark envVars as "sync: false" to set them
+      # manually in the dashboard instead of committing them here,
+      # which is what we do for the password specifically.
+      - key: ADMIN_EMAIL
+        value: "admin@edushield.ng"
+      - key: ADMIN_PASSWORD
+        sync: false   # Set this manually in the Render dashboard —
+                       # never commit a real admin password to git,
+                       # even in a config file that "looks" private
+
+# Attach a managed PostgreSQL database.
+# Render automatically wires DATABASE_URL above to this database's
+# real connection string — you never type a connection string by hand.
+databases:
+  - name: edushield-db
+    plan: free        # See note #2 above — 90-day expiry on free tier
+    region: frankfurt  # Must match the web service region for low latency
+

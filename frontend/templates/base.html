@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<!--
+  base.html — EduShield NG Master Layout
+  =======================================
+  Every other template extends this file using Jinja2 template inheritance.
+
+  Jinja2 blocks defined here:
+    block: title       page title in browser tab
+    block: extra_css    page-specific CSS links
+    block: content       main page body
+    block: extra_js      page-specific JS scripts
+
+  Child templates use "extends base.html" then override the "content" block.
+-->
+{# Note: the comment above intentionally avoids real {% %} tag syntax
+   so Jinja2 doesn't try to parse documentation text as template logic. #}
+<head>
+  <meta charset="UTF-8" />
+  <!-- Viewport: makes the page responsive on mobile devices -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Security headers via meta tags (also set server-side in middleware) -->
+  <!-- X-Content-Type-Options: browser won't guess MIME type (stops MIME sniffing attacks) -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <!-- Referrer Policy: don't leak our URL to external sites -->
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+  <!-- Prevent search engines from indexing exam pages -->
+  {% if no_index is defined %}
+  <meta name="robots" content="noindex, nofollow" />
+  {% endif %}
+
+  <title>{% block title %}EduShield NG{% endblock %} | Secure Online Examinations</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon.svg') }}" />
+
+  <!-- Google Fonts — loaded with display=swap to prevent render blocking -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Font Awesome Icons (CDN) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- EduShield Global CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/polish.css') }}" />
+
+  <!-- Inject translations for JavaScript consumption -->
+  <!-- This allows anti_cheat.js and exam_engine.js to show localised messages -->
+  <script>
+    window.EduShieldLang = "{{ current_lang }}";
+    window.EduShieldTTSLocale = "{{ tts_locale }}";
+    window.EduShieldT = {{ translations_json | safe }};
+  </script>
+
+  <!-- Page-specific CSS (child templates inject here) -->
+  {% block extra_css %}{% endblock %}
+</head>
+
+<body class="{% block body_class %}{% endblock %}">
+
+  <!-- ══════════════════════════════════════════
+       PAGE TRANSITION INDICATOR
+       A thin top-of-page progress bar that appears
+       the instant a link is clicked, giving immediate
+       feedback during the Flask round-trip (full page
+       loads, not SPA — this fills the "is it doing
+       anything?" gap users feel during navigation).
+  ══════════════════════════════════════════ -->
+  <div id="pageTransitionBar" aria-hidden="true"></div>
+
+  <!-- ══════════════════════════════════════════
+       SKIP NAVIGATION LINK
+       For screen readers and keyboard users:
+       pressing Tab as the first action jumps
+       past the nav directly to main content.
+       This is a WCAG 2.1 Level A requirement.
+  ══════════════════════════════════════════ -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- ══════════════════════════════════════════
+       TOP NAVIGATION BAR
+       Only shown when user is logged in.
+       Anonymous pages (login/register) hide it.
+  ══════════════════════════════════════════ -->
+  {% if current_user.is_authenticated %}
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="nav-container">
+
+      <!-- Brand Logo -->
+      <a href="{{ url_for('index') }}" class="nav-brand" aria-label="EduShield NG Home">
+        <span class="brand-icon" aria-hidden="true">🛡️</span>
+        <span class="brand-text">EduShield <span class="brand-ng">NG</span></span>
+      </a>
+
+      <!-- Mobile hamburger button -->
+      <button class="nav-toggle" id="navToggle"
+              aria-expanded="false"
+              aria-controls="navMenu"
+              aria-label="Toggle navigation menu">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
+
+      <!-- Navigation Links -->
+      <ul class="nav-menu" id="navMenu" role="list">
+
+        {% if current_user.is_admin() %}
+        <!-- Admin Navigation -->
+        <li><a href="{{ url_for('admin.dashboard') }}" class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+          <i class="fas fa-chart-line" aria-hidden="true"></i> Dashboard
+        </a></li>
+        <li><a href="{{ url_for('admin.exams') }}" class="nav-link {% if 'admin.exam' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-file-alt" aria-hidden="true"></i> Exams
+        </a></li>
+        <li><a href="{{ url_for('admin.students') }}" class="nav-link">
+          <i class="fas fa-users" aria-hidden="true"></i> Students
+        </a></li>
+        <li><a href="{{ url_for('admin.cheat_logs') }}" class="nav-link">
+          <i class="fas fa-shield-alt" aria-hidden="true"></i> Integrity Logs
+        </a></li>
+
+        {% else %}
+        <!-- Student Navigation -->
+        <li><a href="{{ url_for('exam.student_dashboard') }}" class="nav-link {% if request.endpoint == 'exam.student_dashboard' %}active{% endif %}">
+          <i class="fas fa-home" aria-hidden="true"></i> Dashboard
+        </a></li>
+        <li><a href="{{ url_for('exam.available_exams') }}" class="nav-link {% if 'exam.available' in request.endpoint %}active{% endif %}">
+          <i class="fas fa-clipboard-list" aria-hidden="true"></i> Available Exams
+        </a></li>
+        <li><a href="{{ url_for('exam.my_results') }}" class="nav-link">
+          <i class="fas fa-trophy" aria-hidden="true"></i> My Results
+        </a></li>
+        {% endif %}
+
+      </ul>
+
+      <!-- Right side: theme toggle + user menu -->
+      <div class="nav-right">
+
+        <!-- Accessibility: Text-to-Speech toggle -->
+        <button class="nav-icon-btn" id="ttsToggle"
+                aria-label="{{ t('enable_tts') }}"
+                title="{{ t('enable_tts') }}"
+                aria-pressed="false">
+          <i class="fas fa-volume-up" aria-hidden="true"></i>
+        </button>
+
+        <!-- Language switcher -->
+        <div class="lang-menu" id="langMenu">
+          <button class="nav-icon-btn lang-trigger"
+                  aria-haspopup="true" aria-expanded="false"
+                  aria-controls="langDropdown" id="langMenuBtn"
+                  title="Change language / Canza harshe / Ìyípadà èdè / Gbanwee asụsụ">
+            <span class="lang-flag" aria-hidden="true">
+              {% if current_lang == 'ha' %}HA
+              {% elif current_lang == 'yo' %}YO
+              {% elif current_lang == 'ig' %}IG
+              {% else %}EN{% endif %}
+            </span>
+          </button>
+          <ul class="lang-dropdown" id="langDropdown" role="menu">
+            {% for code, name in supported_languages.items() %}
+            <li role="none">
+              <a href="{{ url_for('set_language', lang_code=code) }}"
+                 role="menuitem"
+                 class="lang-option {% if code == current_lang %}lang-active{% endif %}"
+                 hreflang="{{ code }}"
+                 aria-current="{{ 'true' if code == current_lang else 'false' }}">
+                {{ name }}
+                {% if code == current_lang %}<i class="fas fa-check" aria-hidden="true"></i>{% endif %}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <!-- Dark/Light mode toggle -->
+        <button class="nav-icon-btn" id="themeToggle"
+                aria-label="Toggle dark mode"
+                title="Toggle dark/light mode"
+                aria-pressed="false">
+          <i class="fas fa-moon" aria-hidden="true" id="themeIcon"></i>
+        </button>
+
+        <!-- User dropdown menu -->
+        <div class="user-menu" id="userMenu">
+          <button class="user-menu-trigger"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                  aria-controls="userDropdown"
+                  id="userMenuBtn">
+            <!-- Avatar: coloured circle with initial -->
+            <span class="user-avatar" aria-hidden="true">
+              {{ current_user.full_name[0].upper() }}
+            </span>
+            <span class="user-name-short">
+              {{ current_user.full_name.split()[0] }}
+            </span>
+            <i class="fas fa-chevron-down fa-xs" aria-hidden="true"></i>
+          </button>
+
+          <ul class="user-dropdown" id="userDropdown" role="menu" aria-label="User menu">
+            <li role="none">
+              <div class="dropdown-header">
+                <strong>{{ current_user.full_name }}</strong>
+                <small>{{ current_user.email }}</small>
+                <span class="role-badge role-{{ current_user.role }}">
+                  {{ current_user.role.title() }}
+                </span>
+              </div>
+            </li>
+            <li role="none"><hr class="dropdown-divider" /></li>
+            <li role="none">
+              <a href="{{ url_for('auth.profile') }}" class="dropdown-item" role="menuitem">
+                <i class="fas fa-user" aria-hidden="true"></i> My Profile
+              </a>
+            </li>
+            {% if current_user.is_student() %}
+            <li role="none">
+              <a href="{{ url_for('exam.my_results') }}" class="dropdown-item" role="menuitem">
+                <i class="fas fa-chart-bar" aria-hidden="true"></i> My Results
+              </a>
+            </li>
+            {% endif %}
+            <li role="none"><hr class="dropdown-divider" /></li>
+            <li role="none">
+              <a href="{{ url_for('auth.logout') }}" class="dropdown-item dropdown-item-danger" role="menuitem">
+                <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Sign Out
+              </a>
+            </li>
+          </ul>
+        </div><!-- /.user-menu -->
+
+      </div><!-- /.nav-right -->
+    </div><!-- /.nav-container -->
+  </nav>
+  {% endif %}
+
+  <!-- ══════════════════════════════════════════
+       FLASH MESSAGES
+       Flask's flash() system — one-time messages
+       shown after a redirect (e.g. "Login successful")
+  ══════════════════════════════════════════ -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-container" role="alert" aria-live="polite" aria-atomic="true">
+    {% for category, message in messages %}
+    <div class="flash-message flash-{{ category }}" role="alert">
+      <span class="flash-icon" aria-hidden="true">
+        {% if category == 'success' %}✅
+        {% elif category == 'danger' %}❌
+        {% elif category == 'warning' %}⚠️
+        {% else %}ℹ️{% endif %}
+      </span>
+      <span class="flash-text">{{ message }}</span>
+      <button class="flash-close" onclick="this.parentElement.remove()"
+              aria-label="Close notification">×</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <!-- ══════════════════════════════════════════
+       MAIN CONTENT AREA
+       id="main-content" is the skip-link target.
+       role="main" is semantic landmark for screen readers.
+  ══════════════════════════════════════════ -->
+  <main id="main-content" role="main" tabindex="-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ══════════════════════════════════════════
+       FOOTER (hidden on exam pages)
+  ══════════════════════════════════════════ -->
+  {% block footer %}
+  <footer class="site-footer" role="contentinfo">
+    <div class="footer-container">
+      <p>
+        🛡️ <strong>EduShield NG</strong> — Secure Online Examinations
+        &copy; {{ 2024 }} · Built for Nigeria's Education System
+      </p>
+      <p class="footer-links">
+        <a href="#">Privacy Policy</a> ·
+        <a href="#">Terms of Service</a> ·
+        <a href="#">Accessibility</a> ·
+        <a href="#">Support</a>
+      </p>
+    </div>
+  </footer>
+  {% endblock %}
+
+  <!-- ══════════════════════════════════════════
+       GLOBAL JAVASCRIPT
+  ══════════════════════════════════════════ -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/accessibility.js') }}"></script>
+
+  <!-- Page-specific JS (child templates inject here) -->
+  {% block extra_js %}{% endblock %}
+
+</body>
+</html>

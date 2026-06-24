@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-container" style="max-width:900px;">
+
+  <div class="page-header">
+    <div class="page-header-left">
+      <h1 class="page-title">
+        <i class="fas fa-{{ 'plus' if not exam else 'edit' }}" aria-hidden="true"></i>
+        {{ title }}
+      </h1>
+      {% if exam %}
+      <p class="page-subtitle">
+        <span class="badge badge-{{ 'success' if exam.status == 'published' else 'neutral' }}">
+          {{ exam.status.upper() }}
+        </span>
+        · {{ exam.question_count() }} question{{ 's' if exam.question_count() != 1 }}
+        · {{ exam.total_marks() }} total marks
+      </p>
+      {% endif %}
+    </div>
+    <div class="page-header-right">
+      <a href="{{ url_for('admin.exams') }}" class="btn btn-ghost">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Exams
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Exam Shell Settings Form ─────────────── -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header">
+      <h2 class="card-title"><i class="fas fa-cog" aria-hidden="true"></i> Exam Settings</h2>
+    </div>
+    <div class="card-body">
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="form-row">
+          <div class="form-group" style="flex:2;">
+            {{ form.title.label(class="form-label") }}
+            {{ form.title(class="form-control" + (" form-control-error" if form.title.errors else "")) }}
+            {% if form.title.errors %}<div class="field-error">{{ form.title.errors[0] }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            {{ form.subject.label(class="form-label") }}
+            {{ form.subject(class="form-control" + (" form-control-error" if form.subject.errors else "")) }}
+            {% if form.subject.errors %}<div class="field-error">{{ form.subject.errors[0] }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div class="form-group">
+          {{ form.description.label(class="form-label") }}
+          {{ form.description(class="form-control", rows=3) }}
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            {{ form.duration_minutes.label(class="form-label") }}
+            {{ form.duration_minutes(class="form-control" + (" form-control-error" if form.duration_minutes.errors else "")) }}
+            {% if form.duration_minutes.errors %}<div class="field-error">{{ form.duration_minutes.errors[0] }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            {{ form.pass_mark.label(class="form-label") }}
+            {{ form.pass_mark(class="form-control" + (" form-control-error" if form.pass_mark.errors else "")) }}
+            {% if form.pass_mark.errors %}<div class="field-error">{{ form.pass_mark.errors[0] }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            {{ form.max_tab_switches.label(class="form-label") }}
+            {{ form.max_tab_switches(class="form-control") }}
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            {{ form.target_institution.label(class="form-label") }}
+            {{ form.target_institution(class="form-control") }}
+          </div>
+          <div class="form-group">
+            {{ form.target_department.label(class="form-label") }}
+            {{ form.target_department(class="form-control") }}
+          </div>
+        </div>
+
+        <div class="anti-cheat-toggles">
+          <label class="toggle-option">
+            {{ form.webcam_required() }}
+            <span><i class="fas fa-video" aria-hidden="true"></i> Require Webcam Monitoring</span>
+          </label>
+          <label class="toggle-option">
+            {{ form.shuffle_questions() }}
+            <span><i class="fas fa-random" aria-hidden="true"></i> Shuffle Question Order</span>
+          </label>
+          <label class="toggle-option">
+            {{ form.shuffle_options() }}
+            <span><i class="fas fa-list" aria-hidden="true"></i> Shuffle Answer Options</span>
+          </label>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
+          {{ form.submit(class="btn btn-primary") }}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if exam %}
+  <!-- ── Question List ─────────────────────────── -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header">
+      <h2 class="card-title"><i class="fas fa-list-ol" aria-hidden="true"></i> Questions ({{ questions|length }})</h2>
+      {% if exam.status == 'draft' and questions %}
+      <form method="POST" action="{{ url_for('admin.publish_exam', exam_id=exam.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="btn btn-primary btn-sm"
+                onclick="return confirm('Publish this exam now? It will become visible to students immediately.');">
+          <i class="fas fa-upload" aria-hidden="true"></i> Publish Exam
+        </button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% for q in questions %}
+      <div class="question-row">
+        <div class="question-row-num">{{ loop.index }}</div>
+        <div class="question-row-body">
+          <p class="question-row-text">{{ q.text }}</p>
+          <div class="question-row-options">
+            {% for letter, text in q.get_options().items() %}
+            <span class="question-row-opt {% if letter == q.correct_answer %}opt-correct{% endif %}">
+              {{ letter }}: {{ text }}
+              {% if letter == q.correct_answer %}<i class="fas fa-check" aria-hidden="true"></i>{% endif %}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="question-row-marks">{{ q.marks }} mk</div>
+        <form method="POST" action="{{ url_for('admin.delete_question', exam_id=exam.id, question_id=q.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button type="submit" class="btn btn-ghost btn-sm" title="Delete question"
+                  onclick="return confirm('Remove this question?');">
+            <i class="fas fa-trash" aria-hidden="true" style="color:var(--color-danger);"></i>
+          </button>
+        </form>
+      </div>
+      {% else %}
+      <p style="text-align:center;color:var(--text-muted);padding:2rem;">
+        No questions yet. Add your first question below.
+      </p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Add Question Form ─────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><i class="fas fa-plus-circle" aria-hidden="true"></i> Add Question</h2>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('admin.add_question', exam_id=exam.id) }}" novalidate>
+        {{ question_form.hidden_tag() }}
+
+        <div class="form-group">
+          {{ question_form.text.label(class="form-label") }}
+          {{ question_form.text(class="form-control" + (" form-control-error" if question_form.text.errors else ""), rows=2) }}
+          {% if question_form.text.errors %}<div class="field-error">{{ question_form.text.errors[0] }}</div>{% endif %}
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            {{ question_form.option_a.label(class="form-label") }}
+            {{ question_form.option_a(class="form-control" + (" form-control-error" if question_form.option_a.errors else "")) }}
+          </div>
+          <div class="form-group">
+            {{ question_form.option_b.label(class="form-label") }}
+            {{ question_form.option_b(class="form-control" + (" form-control-error" if question_form.option_b.errors else "")) }}
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            {{ question_form.option_c.label(class="form-label") }}
+            {{ question_form.option_c(class="form-control" + (" form-control-error" if question_form.option_c.errors else "")) }}
+          </div>
+          <div class="form-group">
+            {{ question_form.option_d.label(class="form-label") }}
+            {{ question_form.option_d(class="form-control" + (" form-control-error" if question_form.option_d.errors else "")) }}
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            {{ question_form.correct_answer.label(class="form-label") }}
+            {{ question_form.correct_answer(class="form-control form-select") }}
+          </div>
+          <div class="form-group">
+            {{ question_form.marks.label(class="form-label") }}
+            {{ question_form.marks(class="form-control") }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          {{ question_form.explanation.label(class="form-label") }}
+          {{ question_form.explanation(class="form-control", rows=2) }}
+          <div class="field-hint">Shown to students after submitting — helps them learn from mistakes.</div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;">
+          {{ question_form.submit(class="btn btn-primary") }}
+        </div>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📝</div>
+    <h3 class="empty-title">Save the exam first</h3>
+    <p class="empty-desc">Once you save these settings, you'll be able to add questions.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-row { display:flex; gap:1rem; flex-wrap:wrap; }
+.form-row .form-group { flex:1; min-width:140px; }
+
+.anti-cheat-toggles { display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem; }
+.toggle-option {
+  display:flex; align-items:center; gap:0.5rem;
+  padding:0.6rem 1rem; border:1px solid var(--surface-border);
+  border-radius:var(--radius-lg); cursor:pointer; font-size:var(--font-size-sm);
+}
+.toggle-option:hover { border-color:var(--color-primary); }
+.toggle-option input { accent-color: var(--color-primary); }
+
+.question-row {
+  display:flex; align-items:flex-start; gap:1rem;
+  padding:1rem 1.5rem; border-bottom:1px solid var(--surface-border);
+}
+.question-row:last-child { border-bottom:none; }
+.question-row-num {
+  width:2rem; height:2rem; border-radius:50%; background:var(--color-primary-light);
+  color:var(--color-primary); display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:var(--font-size-sm); flex-shrink:0;
+}
+.question-row-body { flex:1; }
+.question-row-text { font-weight:600; color:var(--text-primary); margin-bottom:0.5rem; }
+.question-row-options { display:flex; flex-wrap:wrap; gap:0.5rem; }
+.question-row-opt {
+  font-size:var(--font-size-xs); padding:2px 0.5rem; border-radius:var(--radius-md);
+  background:var(--surface-hover); color:var(--text-secondary);
+}
+.opt-correct { background:var(--color-success-light); color:var(--color-success); font-weight:600; }
+.question-row-marks {
+  font-size:var(--font-size-xs); font-weight:700; color:var(--text-muted);
+  white-space:nowrap; padding-top:0.4rem;
+}
+
+@media (max-width:700px) { .form-row { flex-direction:column; } }
+</style>
+{% endblock %}

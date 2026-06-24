@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+<!--
+  auth/login.html — Login Page
+  ==============================
+  Extends base.html — only defines what's different.
+
+  Key features:
+  - CSRF token via {{ form.hidden_tag() }}
+  - Role-based login (student + admin use same form)
+  - Accessible: labels linked to inputs, error announcements
+  - "next" hidden field preserves redirect target after login
+-->
+
+{% block title %}Sign In{% endblock %}
+
+{% block body_class %}auth-page{% endblock %}
+
+{% block footer %}{% endblock %}{# No footer on auth pages #}
+
+{% block content %}
+<div class="auth-wrapper">
+
+  <!-- Left panel — branding (hidden on mobile) -->
+  <div class="auth-brand-panel" aria-hidden="true">
+    <div class="auth-brand-content">
+      <div class="auth-logo">🛡️</div>
+      <h1 class="auth-brand-title">EduShield NG</h1>
+      <p class="auth-brand-tagline">Nigeria's Most Secure Online Examination Platform</p>
+
+      <ul class="auth-feature-list">
+        <li><span class="feature-icon">🤖</span> AI-powered face monitoring</li>
+        <li><span class="feature-icon">🔒</span> Real-time anti-cheat detection</li>
+        <li><span class="feature-icon">♿</span> Full accessibility support</li>
+        <li><span class="feature-icon">🌍</span> Hausa · Yoruba · Igbo · English</li>
+      </ul>
+
+      <!-- Decorative circles -->
+      <div class="auth-decoration">
+        <div class="deco-circle deco-1"></div>
+        <div class="deco-circle deco-2"></div>
+        <div class="deco-circle deco-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel — login form -->
+  <div class="auth-form-panel">
+    <div class="auth-form-container">
+
+      <!-- Mobile logo (only visible on small screens) -->
+      <div class="auth-mobile-logo">
+        <span>🛡️</span> EduShield NG
+      </div>
+
+      <h2 class="auth-form-title">Welcome back</h2>
+      <p class="auth-form-subtitle">Sign in to access your examinations</p>
+
+      <!-- Login form -->
+      <!-- novalidate: we handle validation server-side (don't let browser skip our checks) -->
+      <form method="POST"
+            action="{{ url_for('auth.login') }}"
+            novalidate
+            data-no-loading-state
+            aria-label="Sign in form"
+            id="loginForm">
+
+        <!-- CSRF hidden token — required on every POST form -->
+        <!-- Without this, Flask-WTF rejects the submission with 400 -->
+        {{ form.hidden_tag() }}
+
+        <!-- Preserve the 'next' redirect target across the login -->
+        <input type="hidden" name="next" value="{{ request.args.get('next', '') }}" />
+
+        <!-- Email field -->
+        <div class="form-group">
+          <label for="email" class="form-label">
+            Email Address
+            <span class="required-star" aria-hidden="true">*</span>
+          </label>
+          {{ form.email(
+              id="email",
+              class="form-control" + (" form-control-error" if form.email.errors else ""),
+              placeholder="you@example.com",
+              autocomplete="email",
+              autofocus=true,
+              aria_required="true",
+              aria_describedby="email-error" if form.email.errors else ""
+          ) }}
+          {% if form.email.errors %}
+          <div class="field-error" id="email-error" role="alert">
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+            {{ form.email.errors[0] }}
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Password field -->
+        <div class="form-group">
+          <div class="form-label-row">
+            <label for="password" class="form-label">
+              Password
+              <span class="required-star" aria-hidden="true">*</span>
+            </label>
+            <a href="#" class="form-label-link" tabindex="0">Forgot password?</a>
+          </div>
+          <div class="input-with-toggle">
+            {{ form.password(
+                id="password",
+                class="form-control" + (" form-control-error" if form.password.errors else ""),
+                placeholder="Enter your password",
+                autocomplete="current-password",
+                aria_required="true",
+                aria_describedby="password-error" if form.password.errors else ""
+            ) }}
+            <!-- Show/hide password button -->
+            <button type="button"
+                    class="input-toggle-btn"
+                    id="togglePassword"
+                    aria-label="Show password"
+                    aria-pressed="false">
+              <i class="fas fa-eye" aria-hidden="true" id="toggleIcon"></i>
+            </button>
+          </div>
+          {% if form.password.errors %}
+          <div class="field-error" id="password-error" role="alert">
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+            {{ form.password.errors[0] }}
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Remember me checkbox -->
+        <div class="form-group form-check-group">
+          {{ form.remember_me(id="remember_me", class="form-check-input") }}
+          <label for="remember_me" class="form-check-label">
+            Keep me signed in for 2 hours
+          </label>
+        </div>
+
+        <!-- Submit button -->
+        <button type="submit" class="btn btn-primary btn-full" id="loginBtn">
+          <span class="btn-text">
+            <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+            Sign In
+          </span>
+          <span class="btn-loading" aria-hidden="true" hidden>
+            <i class="fas fa-spinner fa-spin"></i> Signing in...
+          </span>
+        </button>
+
+      </form>
+
+      <!-- Divider -->
+      <div class="auth-divider" role="separator">
+        <span>Don't have an account?</span>
+      </div>
+
+      <!-- Register link -->
+      <a href="{{ url_for('auth.register') }}" class="btn btn-outline btn-full">
+        <i class="fas fa-user-plus" aria-hidden="true"></i>
+        Create Student Account
+      </a>
+
+      <!-- Accessibility note -->
+      <p class="auth-accessibility-note">
+        <i class="fas fa-universal-access" aria-hidden="true"></i>
+        Need accessibility support?
+        <button type="button" class="link-btn" id="enableTTSBtn"
+                aria-label="Enable text-to-speech for this page">
+          Enable Text-to-Speech
+        </button>
+      </p>
+
+    </div>
+  </div><!-- /.auth-form-panel -->
+</div><!-- /.auth-wrapper -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Show/Hide password toggle ──────────────────
+const toggleBtn = document.getElementById('togglePassword');
+const passwordInput = document.getElementById('password');
+const toggleIcon = document.getElementById('toggleIcon');
+
+if (toggleBtn) {
+  toggleBtn.addEventListener('click', function () {
+    const isHidden = passwordInput.type === 'password';
+    passwordInput.type = isHidden ? 'text' : 'password';
+    toggleIcon.className = isHidden ? 'fas fa-eye-slash' : 'fas fa-eye';
+    this.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    this.setAttribute('aria-pressed', isHidden ? 'true' : 'false');
+  });
+}
+
+// ── Show loading state on submit ───────────────
+const loginForm = document.getElementById('loginForm');
+const loginBtn = document.getElementById('loginBtn');
+
+if (loginForm) {
+  loginForm.addEventListener('submit', function () {
+    const btnText = loginBtn.querySelector('.btn-text');
+    const btnLoading = loginBtn.querySelector('.btn-loading');
+    btnText.hidden = true;
+    btnLoading.hidden = false;
+    loginBtn.disabled = true;
+  });
+}
+
+// ── Enable TTS for page ────────────────────────
+const ttsBtn = document.getElementById('enableTTSBtn');
+if (ttsBtn && window.speechSynthesis) {
+  ttsBtn.addEventListener('click', function () {
+    // Read the page headings aloud
+    const heading = document.querySelector('.auth-form-title');
+    if (heading) {
+      const utterance = new SpeechSynthesisUtterance(
+        'EduShield NG Login Page. ' + heading.textContent +
+        '. Please enter your email address and password to sign in.'
+      );
+      utterance.lang = 'en-NG';
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+    this.textContent = 'Reading...';
+    setTimeout(() => { this.textContent = 'Enable Text-to-Speech'; }, 4000);
+  });
+} else if (ttsBtn) {
+  ttsBtn.textContent = 'TTS not supported in this browser';
+  ttsBtn.disabled = true;
+}
+</script>
+{% endblock %}

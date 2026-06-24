@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduShield NG — Secure Online Examinations for Nigeria</title>
+  <meta name="description" content="AI-powered secure online examination platform reducing malpractice in Nigerian secondary schools, universities, and professional bodies." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --secondary: #7c3aed;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --bg: #f8fafc;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; color: var(--text); background: var(--bg); line-height: 1.6; }
+
+    .hero {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #7c3aed 100%);
+      color: white;
+      padding: 5rem 2rem 6rem;
+      text-align: center;
+    }
+    .hero-logo { font-size: 3.5rem; margin-bottom: 1rem; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.25rem); font-weight: 800; margin-bottom: 1rem; }
+    .hero p { font-size: 1.15rem; color: rgba(255,255,255,0.85); max-width: 600px; margin: 0 auto 2.5rem; }
+
+    .hero-ctas { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.9rem 2rem; border-radius: 0.75rem; font-weight: 700;
+      text-decoration: none; transition: transform 0.15s ease;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: white; color: var(--primary); }
+    .btn-outline { background: transparent; color: white; border: 2px solid rgba(255,255,255,0.5); }
+
+    .features {
+      max-width: 1100px; margin: -3rem auto 0; padding: 0 2rem 5rem;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem; position: relative; z-index: 1;
+    }
+    .feature-card {
+      background: white; border-radius: 1rem; padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+    .feature-icon { font-size: 2rem; margin-bottom: 1rem; }
+    .feature-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .feature-card p { font-size: 0.9rem; color: var(--text-muted); }
+
+    .stats-band {
+      background: white; padding: 3rem 2rem; text-align: center;
+      border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;
+    }
+    .stats-grid {
+      max-width: 900px; margin: 0 auto; display: grid;
+      grid-template-columns: repeat(4, 1fr); gap: 2rem;
+    }
+    .stat-value { font-size: 2rem; font-weight: 800; color: var(--primary); }
+    .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    .languages { padding: 4rem 2rem; text-align: center; max-width: 700px; margin: 0 auto; }
+    .lang-chips { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
+    .lang-chip {
+      background: #ede9fe; color: #6d28d9; padding: 0.5rem 1.25rem;
+      border-radius: 9999px; font-weight: 600; font-size: 0.9rem;
+    }
+
+    .cta-band {
+      background: linear-gradient(135deg, #1e3a8a, #7c3aed);
+      color: white; text-align: center; padding: 4rem 2rem;
+    }
+    .cta-band h2 { font-size: 1.75rem; margin-bottom: 1rem; }
+    .cta-band p { color: rgba(255,255,255,0.8); margin-bottom: 2rem; }
+
+    footer {
+      text-align: center; padding: 2.5rem 2rem; color: var(--text-muted); font-size: 0.85rem;
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+
+    .disclaimer {
+      max-width: 700px; margin: 0 auto 2rem; padding: 1rem 1.5rem;
+      background: #fef3c7; border: 1px solid #fbbf24; border-radius: 0.75rem;
+      font-size: 0.85rem; color: #78350f; text-align: left;
+    }
+
+    @media (max-width: 700px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <section class="hero">
+    <div class="hero-logo">🛡️</div>
+    <h1>Secure Online Examinations,<br>Built for Nigeria</h1>
+    <p>
+      AI-powered proctoring, real-time anti-cheat detection, and full
+      accessibility support — in English, Hausa, Yorùbá, and Igbo.
+    </p>
+    <div class="hero-ctas">
+      <!--
+        IMPORTANT: replace this href with your actual Render URL after
+        deployment, e.g. https://edushield-ng.onrender.com/auth/login
+        This static page links OUT to the real application — it does
+        not host the application itself (see Day 10 notes on why
+        Netlify hosts this landing page, not the Flask backend).
+      -->
+      <a href="https://edushield-ng.onrender.com/auth/login" class="btn btn-primary">
+        <i class="fas fa-sign-in-alt"></i> Sign In to EduShield NG
+      </a>
+      <a href="https://edushield-ng.onrender.com/auth/register" class="btn btn-outline">
+        <i class="fas fa-user-plus"></i> Create Student Account
+      </a>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <h3>AI Face Monitoring</h3>
+      <p>face-api.js verifies the registered student's identity throughout the exam, with consensual webcam calibration and snapshot evidence only for genuine violations.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>Real-Time Anti-Cheat</h3>
+      <p>Tab-switch detection, clipboard blocking, and keyboard-shortcut prevention — all logged server-side with tamper-resistant timestamps.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">♿</div>
+      <h3>Built for Everyone</h3>
+      <p>Full text-to-speech, keyboard navigation, high-contrast mode, and large-text support — exams should never be a barrier.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <h3>Institutional Insight</h3>
+      <p>Admins get analytics, integrity logs with evidence, and one-click CSV export for institutional records.</p>
+    </div>
+  </section>
+
+  <section class="stats-band">
+    <div class="stats-grid">
+      <div><div class="stat-value">567+</div><div class="stat-label">Automated Tests</div></div>
+      <div><div class="stat-value">4</div><div class="stat-label">Languages Supported</div></div>
+      <div><div class="stat-value">14</div><div class="stat-label">Anti-Cheat Detectors</div></div>
+      <div><div class="stat-value">100%</div><div class="stat-label">Open Source Build</div></div>
+    </div>
+  </section>
+
+  <section class="languages">
+    <h2>Available in Your Language</h2>
+    <p style="color:var(--text-muted); margin-top:0.5rem;">
+      The full interface, anti-cheat warnings, and text-to-speech all work in:
+    </p>
+    <div class="lang-chips">
+      <span class="lang-chip">🇬🇧 English</span>
+      <span class="lang-chip">Hausa</span>
+      <span class="lang-chip">Yorùbá</span>
+      <span class="lang-chip">Igbo</span>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <h2>Ready to give your institution a fairer exam?</h2>
+    <p>Free to deploy. Open source. Built specifically for Nigerian education.</p>
+    <a href="https://edushield-ng.onrender.com/auth/register" class="btn btn-primary">
+      <i class="fas fa-arrow-right"></i> Get Started
+    </a>
+  </section>
+
+  <footer>
+    <div class="disclaimer">
+      <strong>Note on this page:</strong> This landing page is hosted separately
+      on Netlify as a static site. The actual EduShield NG application
+      (login, exams, admin dashboard) runs on Render, since it requires a
+      persistent Python server and PostgreSQL database that Netlify's
+      static/serverless hosting model does not support.
+    </div>
+    🛡️ <strong>EduShield NG</strong> — Secure Online Examinations for Nigeria's Education System<br>
+    <a href="https://github.com/" target="_blank" rel="noopener">View Source on GitHub</a>
+  </footer>
+
+</body>
+</html>

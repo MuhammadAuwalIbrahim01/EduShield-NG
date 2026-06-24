@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+<!--
+  auth/register.html — Student Registration Page
+  ================================================
+  Multi-step feel (single form with sections).
+  Real-time email check and password strength meter via AJAX.
+-->
+
+{% block title %}Create Account{% endblock %}
+{% block body_class %}auth-page{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper auth-wrapper-register">
+
+  <!-- Left brand panel -->
+  <div class="auth-brand-panel" aria-hidden="true">
+    <div class="auth-brand-content">
+      <div class="auth-logo">🛡️</div>
+      <h1 class="auth-brand-title">Join EduShield NG</h1>
+      <p class="auth-brand-tagline">Create your secure examination account</p>
+
+      <div class="register-steps" aria-hidden="true">
+        <div class="reg-step reg-step-active">
+          <span class="step-num">1</span>
+          <span class="step-label">Personal Info</span>
+        </div>
+        <div class="reg-step-connector"></div>
+        <div class="reg-step">
+          <span class="step-num">2</span>
+          <span class="step-label">Institution</span>
+        </div>
+        <div class="reg-step-connector"></div>
+        <div class="reg-step">
+          <span class="step-num">3</span>
+          <span class="step-label">Security</span>
+        </div>
+      </div>
+
+      <div class="auth-decoration">
+        <div class="deco-circle deco-1"></div>
+        <div class="deco-circle deco-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right form panel -->
+  <div class="auth-form-panel auth-form-panel-wide">
+    <div class="auth-form-container">
+
+      <div class="auth-mobile-logo"><span>🛡️</span> EduShield NG</div>
+
+      <h2 class="auth-form-title">Create Student Account</h2>
+      <p class="auth-form-subtitle">Fill in your details to get started</p>
+
+      <form method="POST"
+            action="{{ url_for('auth.register') }}"
+            novalidate
+            data-no-loading-state
+            aria-label="Student registration form"
+            id="registerForm">
+
+        {{ form.hidden_tag() }}
+
+        <!-- ── SECTION 1: Personal Information ── -->
+        <fieldset class="form-section">
+          <legend class="form-section-title">
+            <i class="fas fa-user" aria-hidden="true"></i>
+            Personal Information
+          </legend>
+
+          <!-- Full Name -->
+          <div class="form-group">
+            <label for="full_name" class="form-label">
+              Full Name <span class="required-star" aria-hidden="true">*</span>
+            </label>
+            {{ form.full_name(
+                id="full_name",
+                class="form-control" + (" form-control-error" if form.full_name.errors else ""),
+                placeholder="e.g. Aminu Bello",
+                autocomplete="name",
+                aria_required="true"
+            ) }}
+            {% if form.full_name.errors %}
+            <div class="field-error" role="alert">{{ form.full_name.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label for="email" class="form-label">
+              Email Address <span class="required-star" aria-hidden="true">*</span>
+            </label>
+            <div class="input-with-status">
+              {{ form.email(
+                  id="email",
+                  class="form-control" + (" form-control-error" if form.email.errors else ""),
+                  placeholder="you@example.com",
+                  autocomplete="email",
+                  aria_required="true",
+                  aria_describedby="email-status"
+              ) }}
+              <!-- Status icon: tick = available, x = taken, spinner = checking -->
+              <span class="input-status-icon" id="emailStatusIcon" aria-live="polite"></span>
+            </div>
+            <div id="email-status" class="field-hint" aria-live="polite"></div>
+            {% if form.email.errors %}
+            <div class="field-error" role="alert">{{ form.email.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Phone -->
+          <div class="form-group">
+            <label for="phone" class="form-label">
+              Phone Number <span class="optional-label">(optional)</span>
+            </label>
+            {{ form.phone(
+                id="phone",
+                class="form-control" + (" form-control-error" if form.phone.errors else ""),
+                placeholder="08012345678",
+                autocomplete="tel",
+                type="tel"
+            ) }}
+            {% if form.phone.errors %}
+            <div class="field-error" role="alert">{{ form.phone.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Preferred Language -->
+          <div class="form-group">
+            <label for="preferred_language" class="form-label">
+              Preferred Language <span class="required-star" aria-hidden="true">*</span>
+            </label>
+            {{ form.preferred_language(id="preferred_language", class="form-control form-select") }}
+            <div class="field-hint">Used for text-to-speech and interface language</div>
+          </div>
+        </fieldset>
+
+        <!-- ── SECTION 2: Institution Details ── -->
+        <fieldset class="form-section">
+          <legend class="form-section-title">
+            <i class="fas fa-university" aria-hidden="true"></i>
+            Institution Details
+          </legend>
+
+          <!-- Student ID -->
+          <div class="form-group">
+            <label for="student_id" class="form-label">
+              Student ID / Matriculation Number
+              <span class="required-star" aria-hidden="true">*</span>
+            </label>
+            {{ form.student_id(
+                id="student_id",
+                class="form-control" + (" form-control-error" if form.student_id.errors else ""),
+                placeholder="e.g. UL/2024/CS/001",
+                autocomplete="off",
+                aria_required="true"
+            ) }}
+            <div class="field-hint">
+              This is your official student identifier from your institution
+            </div>
+            {% if form.student_id.errors %}
+            <div class="field-error" role="alert">{{ form.student_id.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Institution Name -->
+          <div class="form-group">
+            <label for="institution" class="form-label">
+              Institution / School <span class="required-star" aria-hidden="true">*</span>
+            </label>
+            {{ form.institution(
+                id="institution",
+                class="form-control" + (" form-control-error" if form.institution.errors else ""),
+                placeholder="e.g. University of Lagos",
+                autocomplete="organization",
+                aria_required="true"
+            ) }}
+            {% if form.institution.errors %}
+            <div class="field-error" role="alert">{{ form.institution.errors[0] }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Department -->
+          <div class="form-group">
+            <label for="department" class="form-label">
+              Department / Faculty <span class="optional-label">(optional)</span>
+            </label>
+            {{ form.department(
+                id="department",
+                class="form-control",
+                placeholder="e.g. Computer Science"
+            ) }}
+          </div>
+        </fieldset>
+
+        <!-- ── SECTION 3: Password ── -->
+        <fieldset class="form-section">
+          <legend class="form-section-title">
+            <i class="fas fa-lock" aria-hidden="true"></i>
+            Set Your Password
+          </legend>
+
+          <!-- Password -->
+          <div class="form-group">
+            <label for="password" class="form-label">
+              Password <span class="required-star" aria-hidden="true">*</span>
+            </label>
+            <div class="input-with-toggle">
+              {{ form.password(
+                  id="password",
+                  class="form-control" + (" form-control-error" if form.password.errors else ""),
+                  placeholder="Min 8 characters",
+                  autocomplete="new-password",
+                  aria_required="true",
+                  aria_describedby="password-strength"
+              ) }}
+              <button type="button" class="input-toggle-btn" id="togglePassword"
+                      aria-label="Show password" aria-pressed="false">
+                <i class="fas fa-eye" aria-hidden="true" id="togglePwIcon"></i>
+              </button>
+            </div>
+            {% if form.password.errors %}
+            <div class="field-error" role="alert">{{ form.password.errors[0] }}</div>
+            {% endif %}
+
+            <!-- Password strength meter -->
+            <div id="password-strength" aria-live="polite" aria-label="Password strength">
+              <div class="strength-bar-container" aria-hidden="true">
+                <div class="strength-bar" id="strengthBar"></div>
+              </div>
+              <span class="strength-label" id="strengthLabel"></span>
+              <ul class="strength-feedback" id="strengthFeedback" aria-label="Password requirements"></ul>
+            </div>
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="form-group">
+            <label for="confirm_password" class="form-label">
+              Confirm Password <span class="required-star" aria-hidden="true">*</span>
+            </label>
+            <div class="input-with-toggle">
+              {{ form.confirm_password(
+                  id="confirm_password",
+                  class="form-control" + (" form-control-error" if form.confirm_password.errors else ""),
+                  placeholder="Re-enter password",
+                  autocomplete="new-password",
+                  aria_required="true",
+                  aria_describedby="confirm-match"
+              ) }}
+              <button type="button" class="input-toggle-btn" id="toggleConfirm"
+                      aria-label="Show confirm password" aria-pressed="false">
+                <i class="fas fa-eye" aria-hidden="true" id="toggleCfIcon"></i>
+              </button>
+            </div>
+            <span id="confirm-match" class="field-hint" aria-live="polite"></span>
+            {% if form.confirm_password.errors %}
+            <div class="field-error" role="alert">{{ form.confirm_password.errors[0] }}</div>
+            {% endif %}
+          </div>
+        </fieldset>
+
+        <!-- Terms & Conditions -->
+        <div class="form-group form-check-group terms-group">
+          {{ form.agree_terms(id="agree_terms", class="form-check-input" + (" form-control-error" if form.agree_terms.errors else "")) }}
+          <label for="agree_terms" class="form-check-label">
+            I agree to the <a href="#" target="_blank">Terms of Service</a>
+            and <a href="#" target="_blank">Academic Integrity Policy</a>
+            <span class="required-star" aria-hidden="true">*</span>
+          </label>
+          {% if form.agree_terms.errors %}
+          <div class="field-error" role="alert">{{ form.agree_terms.errors[0] }}</div>
+          {% endif %}
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="btn btn-primary btn-full" id="registerBtn">
+          <span class="btn-text">
+            <i class="fas fa-user-plus" aria-hidden="true"></i>
+            Create Account
+          </span>
+          <span class="btn-loading" hidden>
+            <i class="fas fa-spinner fa-spin"></i> Creating account...
+          </span>
+        </button>
+
+      </form>
+
+      <div class="auth-divider"><span>Already have an account?</span></div>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-outline btn-full">
+        <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+        Sign In Instead
+      </a>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Password show/hide toggles ─────────────────
+function setupToggle(btnId, inputId, iconId) {
+  const btn = document.getElementById(btnId);
+  const inp = document.getElementById(inputId);
+  const ico = document.getElementById(iconId);
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    ico.className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
+    btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  });
+}
+setupToggle('togglePassword', 'password', 'togglePwIcon');
+setupToggle('toggleConfirm', 'confirm_password', 'toggleCfIcon');
+
+// ── Real-time email availability check ─────────
+const emailInput = document.getElementById('email');
+const emailStatus = document.getElementById('email-status');
+const emailIcon = document.getElementById('emailStatusIcon');
+let emailTimer = null;
+
+if (emailInput) {
+  emailInput.addEventListener('input', function () {
+    clearTimeout(emailTimer);
+    const email = this.value.trim();
+    if (!email || !email.includes('@')) {
+      emailStatus.textContent = '';
+      emailIcon.textContent = '';
+      return;
+    }
+    emailIcon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    emailStatus.textContent = 'Checking...';
+
+    // Debounce: wait 500ms after last keystroke before calling server
+    emailTimer = setTimeout(() => {
+      fetch(`/auth/check-email?email=${encodeURIComponent(email)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.available) {
+            emailIcon.innerHTML = '<i class="fas fa-check-circle" style="color:var(--color-success)"></i>';
+            emailStatus.textContent = '✓ Email is available';
+            emailStatus.style.color = 'var(--color-success)';
+          } else {
+            emailIcon.innerHTML = '<i class="fas fa-times-circle" style="color:var(--color-danger)"></i>';
+            emailStatus.textContent = '✗ Email already registered — sign in instead';
+            emailStatus.style.color = 'var(--color-danger)';
+          }
+        })
+        .catch(() => {
+          emailIcon.textContent = '';
+          emailStatus.textContent = '';
+        });
+    }, 500);
+  });
+}
+
+// ── Password strength meter ─────────────────────
+const passwordInput = document.getElementById('password');
+const strengthBar = document.getElementById('strengthBar');
+const strengthLabel = document.getElementById('strengthLabel');
+const strengthFeedback = document.getElementById('strengthFeedback');
+let strengthTimer = null;
+
+const strengthColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#16a34a'];
+const strengthWidths = ['20%', '40%', '60%', '80%', '100%'];
+
+if (passwordInput) {
+  passwordInput.addEventListener('input', function () {
+    clearTimeout(strengthTimer);
+    const pw = this.value;
+    if (!pw) {
+      strengthBar.style.width = '0';
+      strengthLabel.textContent = '';
+      strengthFeedback.innerHTML = '';
+      return;
+    }
+    strengthTimer = setTimeout(() => {
+      fetch(`/auth/password-strength?password=${encodeURIComponent(pw)}`)
+        .then(r => r.json())
+        .then(data => {
+          const score = data.score;
+          strengthBar.style.width = strengthWidths[score] || '20%';
+          strengthBar.style.background = strengthColors[score] || strengthColors[0];
+          strengthLabel.textContent = data.label;
+          strengthFeedback.innerHTML = data.feedback
+            .map(f => `<li style="color:${f.startsWith('✓') ? 'var(--color-success)' : 'var(--color-danger)'}">${f}</li>`)
+            .join('');
+        });
+    }, 300);
+  });
+}
+
+// ── Confirm password match check ───────────────
+const confirmInput = document.getElementById('confirm_password');
+const matchHint = document.getElementById('confirm-match');
+
+if (confirmInput) {
+  confirmInput.addEventListener('input', function () {
+    const pw = document.getElementById('password').value;
+    if (!this.value) { matchHint.textContent = ''; return; }
+    if (this.value === pw) {
+      matchHint.textContent = '✓ Passwords match';
+      matchHint.style.color = 'var(--color-success)';
+    } else {
+      matchHint.textContent = '✗ Passwords do not match';
+      matchHint.style.color = 'var(--color-danger)';
+    }
+  });
+}
+
+// ── Submit loading state ────────────────────────
+const registerForm = document.getElementById('registerForm');
+const registerBtn = document.getElementById('registerBtn');
+if (registerForm) {
+  registerForm.addEventListener('submit', () => {
+    registerBtn.querySelector('.btn-text').hidden = true;
+    registerBtn.querySelector('.btn-loading').hidden = false;
+    registerBtn.disabled = true;
+  });
+}
+</script>
+{% endblock %}

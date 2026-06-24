@@ -1,0 +1,462 @@
+/*
+  polish.css — EduShield NG UI/UX Polish Layer
+  ===============================================
+  Loaded AFTER main.css and exam.css in base.html.
+  This file does NOT redefine components — it adds:
+    1. Loading/skeleton states (for async data: dashboards, results)
+    2. Dark-mode-specific shadow/contrast corrections
+    3. Button and card micro-interactions (active states, focus rings)
+    4. Consistent empty-state component (used inconsistently before today)
+    5. Toast/notification polish
+    6. Form field polish (floating focus rings, smoother transitions)
+    7. Responsive breakpoint audit fixes
+    8. Print stylesheet (so result pages print cleanly if a student/
+       admin needs a paper record)
+*/
+
+
+/* ══════════════════════════════════════════════
+   0. PAGE TRANSITION BAR
+   Shown the instant a navigation link is clicked
+   (see accessibility.js / main.js for the trigger),
+   removed once the new page has fully painted.
+   This is the single highest-value piece of "feels
+   responsive" feedback for a server-rendered (not SPA)
+   app — without it, clicking a link feels like nothing
+   happened for the ~100-400ms round trip to Flask.
+══════════════════════════════════════════════ */
+
+#pageTransitionBar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  z-index: 9999;
+  transition: width 0.4s ease, opacity 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+#pageTransitionBar.is-active {
+  opacity: 1;
+  width: 70%; /* never reaches 100% on its own — page unload completes it */
+}
+[data-reduced-motion="true"] #pageTransitionBar {
+  transition: opacity 0.2s ease; /* keep the bar, drop the width animation */
+}
+
+
+
+   Used while async content loads (dashboard stats,
+   exam lists, admin tables). Shown BEFORE real
+   content via a `.is-loading` class toggled by JS,
+   removed once content is rendered.
+══════════════════════════════════════════════ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-hover) 25%,
+    var(--surface-border) 37%,
+    var(--surface-hover) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.4s ease infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes skeletonShimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.skeleton-text   { height: 0.9em; margin-bottom: 0.5em; width: 100%; }
+.skeleton-text-sm{ height: 0.7em; width: 60%; }
+.skeleton-title  { height: 1.5em; width: 40%; margin-bottom: 0.75em; }
+.skeleton-avatar { width: 3rem; height: 3rem; border-radius: 50%; }
+.skeleton-card   { height: 120px; border-radius: var(--radius-xl); }
+.skeleton-button { height: 2.5rem; width: 120px; border-radius: var(--radius-lg); }
+
+/* Skeleton stat card — mirrors .stat-card layout exactly so the
+   loading state doesn't jump/resize when real content swaps in */
+.skeleton-stat-card {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.skeleton-stat-card .skeleton { flex-shrink: 0; }
+
+/* Respect reduced-motion: shimmer becomes a static pulse instead */
+[data-reduced-motion="true"] .skeleton {
+  animation: skeletonPulse 1.8s ease infinite;
+}
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+
+/* ══════════════════════════════════════════════
+   2. SPINNER (for button loading states, page transitions)
+══════════════════════════════════════════════ */
+
+.spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spinnerRotate 0.6s linear infinite;
+}
+@keyframes spinnerRotate {
+  to { transform: rotate(360deg); }
+}
+[data-reduced-motion="true"] .spinner {
+  animation-duration: 1.2s; /* slower, still functional, less jarring */
+}
+
+
+/* ══════════════════════════════════════════════
+   3. EMPTY STATE — STANDARDIZED COMPONENT
+   Before today this was hand-rolled with inline
+   styles in some templates. Now it's one component.
+══════════════════════════════════════════════ */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 3.5rem 2rem;
+  border: 1.5px dashed var(--surface-border);
+  border-radius: var(--radius-2xl);
+  background: var(--surface-card);
+}
+.empty-state .empty-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  opacity: 0.85;
+  filter: grayscale(0.15);
+}
+.empty-state .empty-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+.empty-state .empty-desc {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  max-width: 360px;
+  line-height: 1.6;
+}
+.empty-state .btn { margin-top: 1.25rem; }
+
+
+/* ══════════════════════════════════════════════
+   4. BUTTON MICRO-INTERACTIONS
+   Adds an active/press state (most UIs only style
+   hover and forget the moment of the actual click).
+══════════════════════════════════════════════ */
+
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+[data-reduced-motion="true"] .btn:active {
+  transform: none; /* respect motion preference */
+}
+
+/* Ripple-free "press flash" — subtle brightness dip on click,
+   cheaper and less distracting than a full ripple animation */
+.btn-primary:active { filter: brightness(0.92); }
+.btn-outline:active,
+.btn-ghost:active    { background: var(--surface-hover); }
+.btn-danger:active   { filter: brightness(0.9); }
+
+/* Disabled state — was inconsistent across forms before today */
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  filter: none !important;
+}
+
+/* Icon-only buttons need a minimum tap target of 44x44px
+   for accessibility (WCAG 2.5.5) — audit fix for btn-sm icon buttons */
+.btn-sm[aria-label]:not(:has(.btn-text)) {
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+}
+
+
+/* ══════════════════════════════════════════════
+   5. CARD MICRO-INTERACTIONS
+══════════════════════════════════════════════ */
+
+.card {
+  transition: box-shadow var(--transition-base), border-color var(--transition-base);
+}
+
+/* Clickable cards (exam cards, flagged-item links) need an
+   obvious affordance beyond just box-shadow change */
+a.exam-card:focus-visible,
+.exam-card:has(a:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+
+/* ══════════════════════════════════════════════
+   6. FORM FIELD POLISH
+══════════════════════════════════════════════ */
+
+.form-control {
+  transition: border-color var(--transition-fast),
+              box-shadow var(--transition-fast),
+              background-color var(--transition-fast);
+}
+
+/* Smoother focus ring that doesn't clip on rounded corners */
+.form-control:focus-visible {
+  outline: none; /* box-shadow ring below replaces default outline */
+}
+
+/* Inline validation success state (green check border) —
+   used by the live email-check / password-match indicators from Day 2 */
+.form-control.is-valid {
+  border-color: var(--color-success);
+}
+.form-control.is-valid:focus {
+  box-shadow: 0 0 0 3px var(--color-success-light);
+}
+
+
+/* ══════════════════════════════════════════════
+   7. DARK MODE CORRECTIONS
+   Light-mode shadows are calibrated for white backgrounds.
+   On dark backgrounds, the SAME shadow values read as either
+   invisible (too subtle) or muddy (wrong undertone). We define
+   dark-mode-specific shadow variables here rather than relying
+   on the light-mode values "just working."
+══════════════════════════════════════════════ */
+
+[data-theme="dark"] {
+  /* Dark-mode shadows use pure black at higher opacity + a very
+     subtle light border-glow on elevated surfaces, which reads as
+     "lifted" on dark backgrounds the way grey shadows read on white */
+  --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -1px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.55), 0 4px 6px -2px rgba(0,0,0,0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.6), 0 10px 10px -5px rgba(0,0,0,0.4);
+}
+
+/* Cards in dark mode benefit from a 1px lighter border to read as
+   "elevated" since shadow alone is less perceptible on dark backgrounds */
+[data-theme="dark"] .card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .exam-card,
+[data-theme="dark"] .admin-stat-card {
+  border-color: var(--surface-border);
+}
+[data-theme="dark"] .card:hover,
+[data-theme="dark"] .exam-card:hover {
+  border-color: var(--color-gray-600);
+}
+
+/* Skeleton shimmer needs different stop colors in dark mode —
+   the light-mode gradient (hover -> border -> hover) is too low-contrast
+   on dark backgrounds to actually look like it's shimmering */
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-hover) 25%,
+    #475569 37%,
+    var(--surface-hover) 63%
+  );
+  background-size: 400% 100%;
+}
+
+/* Badge backgrounds in dark mode: the light-mode pastel backgrounds
+   (#dcfce7, #fee2e2 etc.) are calibrated for white page backgrounds.
+   On dark surfaces they look like bright stickers — we tone them down
+   and brighten the text instead so contrast stays correct (WCAG AA). */
+[data-theme="dark"] .badge-success { background: rgba(34,197,94,0.18);  color: #4ade80; }
+[data-theme="dark"] .badge-danger  { background: rgba(239,68,68,0.18); color: #f87171; }
+[data-theme="dark"] .badge-warning { background: rgba(234,179,8,0.18); color: #fbbf24; }
+[data-theme="dark"] .badge-neutral { background: rgba(148,163,184,0.18); color: #cbd5e1; }
+[data-theme="dark"] .severity-high   { background: rgba(239,68,68,0.18); color: #f87171; }
+[data-theme="dark"] .severity-medium { background: rgba(234,179,8,0.18); color: #fbbf24; }
+[data-theme="dark"] .severity-low    { background: rgba(2,132,199,0.18); color: #38bdf8; }
+[data-theme="dark"] .status-verified { background: rgba(34,197,94,0.18); color: #4ade80; }
+[data-theme="dark"] .status-flagged  { background: rgba(239,68,68,0.18); color: #f87171; }
+[data-theme="dark"] .role-admin       { background: rgba(124,58,237,0.18); color: #c4b5fd; }
+[data-theme="dark"] .role-student     { background: rgba(37,99,235,0.18);  color: #93c5fd; }
+[data-theme="dark"] .completed-badge  { background: rgba(34,197,94,0.18); color: #4ade80; }
+
+/* Profile page status text (status-ok/status-warn/status-danger) uses
+   --color-success/--color-warning/--color-danger DIRECTLY as text color
+   on a dark card background. Those base colors were calibrated for
+   white backgrounds and measurably fail WCAG AA contrast on dark
+   surfaces — verified: #16a34a on #1e293b = 4.44:1 (fail, needs 4.5:1),
+   #dc2626 on #1e293b = 3.03:1 (fail). The brighter variants below
+   (already used for badge text elsewhere) pass at 8.40:1 and 5.29:1. */
+[data-theme="dark"] .status-ok     { color: #4ade80; }
+[data-theme="dark"] .status-danger { color: #f87171; }
+/* .status-warn (#d97706) already passes at 4.59:1 — no change needed,
+   but documented here so the next person doesn't wonder why it's missing. */
+
+/* Event-type badges (admin/cheat_logs.html) — same treatment */
+[data-theme="dark"] .event-tab-switch        { background: rgba(37,99,235,0.18);  color: #93c5fd; }
+[data-theme="dark"] .event-face-absent       { background: rgba(124,58,237,0.18); color: #c4b5fd; }
+[data-theme="dark"] .event-multiple-faces    { background: rgba(249,115,22,0.18); color: #fdba74; }
+[data-theme="dark"] .event-copy-attempt      { background: rgba(234,179,8,0.18);  color: #fbbf24; }
+[data-theme="dark"] .event-keyboard-shortcut { background: rgba(239,68,68,0.18);  color: #f87171; }
+[data-theme="dark"] .event-right-click       { background: rgba(100,116,139,0.18);color: #cbd5e1; }
+[data-theme="dark"] .event-fullscreen-exit   { background: rgba(34,197,94,0.18);  color: #4ade80; }
+[data-theme="dark"] .event-window-blur       { background: rgba(2,132,199,0.18);  color: #38bdf8; }
+[data-theme="dark"] .event-face-mismatch     { background: rgba(220,38,38,0.22);  color: #fca5a5; }
+
+/* Flash messages — light-mode pastel backgrounds need the same treatment */
+[data-theme="dark"] .flash-success { background: rgba(34,197,94,0.15);  border-color: #16a34a; color: #86efac; }
+[data-theme="dark"] .flash-danger  { background: rgba(239,68,68,0.15); border-color: #dc2626; color: #fca5a5; }
+[data-theme="dark"] .flash-warning { background: rgba(234,179,8,0.15); border-color: #d97706; color: #fde047; }
+[data-theme="dark"] .flash-info    { background: rgba(2,132,199,0.15); border-color: #0284c7; color: #7dd3fc; }
+
+/* Score bars / progress bars — track color needs to stay visible
+   against a dark card background, not just inherit the border color */
+[data-theme="dark"] .score-bar-wrap,
+[data-theme="dark"] .strength-bar-container {
+  background: #334155;
+}
+
+/* Auth page gradient panel stays vivid in both themes (intentional —
+   it's brand color, not surface color) but the decorative circles
+   need slightly higher opacity to remain visible against the same gradient */
+[data-theme="dark"] .deco-circle {
+  background: rgba(255,255,255,0.07);
+}
+
+/* Webcam panel border + status text in dark mode */
+[data-theme="dark"] .webcam-panel {
+  border-color: var(--color-primary);
+}
+
+/* Modal overlay backdrop needs to be darker still in dark mode
+   to maintain the same VISUAL separation from the modal itself */
+[data-theme="dark"] .modal-overlay {
+  background: rgba(0,0,0,0.7);
+}
+
+
+/* ══════════════════════════════════════════════
+   8. HIGH CONTRAST MODE — additional polish layer
+   (builds on the base override block added in Day 6's main.css)
+══════════════════════════════════════════════ */
+
+[data-high-contrast="true"] .skeleton {
+  /* Shimmer animation can be visually noisy for low-vision users
+     who enabled high contrast — use a simpler static fill */
+  animation: none;
+  background: var(--surface-border);
+}
+
+[data-high-contrast="true"] .badge,
+[data-high-contrast="true"] .severity-badge,
+[data-high-contrast="true"] .event-badge {
+  border: 1.5px solid currentColor; /* badges need a hard edge, not just color, in high contrast */
+}
+
+
+/* ══════════════════════════════════════════════
+   9. RESPONSIVE BREAKPOINT AUDIT FIXES
+   Issues found by testing at real device widths
+   (375px, 768px, 1024px) rather than just resizing
+   the browser by eye.
+══════════════════════════════════════════════ */
+
+/* iPhone SE / small Android (375px): exam timer + progress text
+   were overlapping at this exact width — not caught by the 768px
+   breakpoint alone */
+@media (max-width: 400px) {
+  .exam-header-title { max-width: 90px; font-size: var(--font-size-xs); }
+  .exam-timer { font-size: var(--font-size-base); padding: 0.2rem 0.6rem; }
+  .exam-progress-info { display: none; }
+  .webcam-panel { width: 84px; top: 3.75rem; right: 0.5rem; }
+  .webcam-panel video { width: 84px; height: 63px; }
+}
+
+/* Tablet portrait (768-1024px): admin stat grids were cramming
+   6 columns into a width meant for 3 — now steps down properly */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .admin-stats-grid { grid-template-columns: repeat(3, 1fr); }
+  .log-stats-grid { grid-template-columns: repeat(3, 1fr); }
+  .student-detail-grid { grid-template-columns: 240px 1fr; }
+}
+
+/* Landscape phone (exam-taking on a phone rotated sideways):
+   sidebar question-nav was eating too much vertical space */
+@media (max-height: 450px) and (orientation: landscape) {
+  .exam-sidebar { display: none; }
+  .question-card { padding: 1rem; }
+  .webcam-panel { display: none; } /* genuinely no room — students
+                                       are warned about this in start.html rules */
+}
+
+/* Large desktop (1440px+): page containers were stretching
+   uncomfortably wide with no max-width ceiling on some pages */
+@media (min-width: 1440px) {
+  .exam-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+}
+
+
+/* ══════════════════════════════════════════════
+   10. PRINT STYLESHEET
+   Admins/students may need a paper record of a result.
+   Strips navigation, buttons, and decorative chrome;
+   keeps the score breakdown and integrity flags legible.
+══════════════════════════════════════════════ */
+
+@media print {
+  .navbar, .site-footer, .flash-container,
+  .nav-toggle, .btn, .skip-link,
+  .webcam-panel, .exam-header, .exam-sidebar,
+  .filter-bar, .page-header-right {
+    display: none !important;
+  }
+
+  body { background: white; color: black; }
+
+  .card, .result-hero, .breakdown-item {
+    box-shadow: none !important;
+    border: 1px solid #999 !important;
+    break-inside: avoid;
+  }
+
+  .result-hero { background: #f0f0f0 !important; color: black !important; }
+  .result-hero-title, .result-hero-subtitle { color: black !important; }
+
+  .page-container { max-width: 100% !important; padding: 0 !important; }
+
+  a { text-decoration: none; color: black; }
+
+  /* Force light-mode colors regardless of the screen theme —
+     printing in "dark mode" wastes ink and prints poorly */
+  * {
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+  }
+  .badge-success { background: #dcfce7 !important; color: #166534 !important; }
+  .badge-danger  { background: #fee2e2 !important; color: #991b1b !important; }
+}
