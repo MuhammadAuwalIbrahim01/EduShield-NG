@@ -126,11 +126,7 @@ class ProductionConfig(BaseConfig):
     SQLALCHEMY_ECHO = False
     # Secure=True means cookie is ONLY sent over HTTPS
     SESSION_COOKIE_SECURE = True
-    
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_pre_ping": True,
-        "pool_recycle": 280,
-    }
+
 
 class TestingConfig(BaseConfig):
     """
